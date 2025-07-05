@@ -16,7 +16,7 @@ type TabProps = {
   onGenerate?: () => void;
 };
 
-function DiagramTab({ repoUrl, diagramGenerated }: TabProps) {
+function DiagramTab({ repoUrl, diagramGenerated, diagramData, loading, error }: TabProps & { diagramData?: any; loading?: boolean; error?: string | null }) {
   const imageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,12 +25,49 @@ function DiagramTab({ repoUrl, diagramGenerated }: TabProps) {
     }
   }, [diagramGenerated]);
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-[700px] h-[700px] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-lg font-semibold text-gray-700">Generating diagram...</p>
+            <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-[700px] h-[700px] flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <p className="text-lg font-semibold text-gray-700 mb-2">Error generating diagram</p>
+            <p className="text-sm text-gray-500">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-      {diagramGenerated && (
-        <div className="flex justify-center items-center w-full min-h-[700px]">
+      {diagramGenerated && diagramData && (
+        <div className="flex justify-center items-center w-full min-h-[700px]" ref={imageRef}>
           <div className="bg-white rounded-2xl shadow-xl flex items-center justify-center w-[700px] h-[700px]">
-            <MermaidDiagram zoomingEnabled />
+            <MermaidDiagram 
+              zoomingEnabled 
+              diagramCode={diagramData.diagram_code}
+            />
           </div>
         </div>
       )}
@@ -214,6 +251,9 @@ function App() {
   const [repoUrl, setRepoUrl] = useState('');
   const [diagramGenerated, setDiagramGenerated] = useState(false);
   const [podcastGenerated, setPodcastGenerated] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [diagramData, setDiagramData] = useState<any>(null);
 
   // Captions and podcast player state
   const [captionsOn, setCaptionsOn] = useState(false);
@@ -241,15 +281,60 @@ function App() {
     }
   }, [podcastGenerated]);
 
-  // Handle Generate button logic
-  const handleGo = () => {
-    if (tab === '') {
-      setDiagramGenerated(true);
-      setPodcastGenerated(true);
-    } else if (tab === 'diagram') {
-      setDiagramGenerated(true);
-    } else if (tab === 'podcast') {
-      setPodcastGenerated(true);
+  // Handle Generate button logic with backend integration
+  const handleGo = async () => {
+    if (!repoUrl || !tab) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      if (tab === 'diagram' || tab === '') {
+        // Step 1: Parse repository
+        console.log('Parsing repository:', repoUrl);
+        const parseResponse = await fetch('http://localhost:8000/api/parse-repo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repo_url: repoUrl })
+        });
+        
+        if (!parseResponse.ok) {
+          throw new Error(`Failed to parse repository: ${parseResponse.statusText}`);
+        }
+        
+        const parseData = await parseResponse.json();
+        console.log('Repository parsed successfully:', parseData);
+        
+        // Step 2: Generate diagram
+        console.log('Generating diagram...');
+        const diagramResponse = await fetch('http://localhost:8000/api/generate-diagram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            file_tree: parseData.file_tree, 
+            readme_content: parseData.readme_content 
+          })
+        });
+        
+        if (!diagramResponse.ok) {
+          throw new Error(`Failed to generate diagram: ${diagramResponse.statusText}`);
+        }
+        
+        const diagramResult = await diagramResponse.json();
+        console.log('Diagram generated successfully:', diagramResult);
+        
+        setDiagramData(diagramResult);
+        setDiagramGenerated(true);
+      }
+      
+      if (tab === 'podcast' || tab === '') {
+        setPodcastGenerated(true);
+      }
+    } catch (error) {
+      console.error('Error generating content:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -283,10 +368,17 @@ function App() {
             />
             <button
               className="w-full md:w-auto mt-2 md:mt-0 md:ml-2 px-6 md:px-8 py-2 rounded-lg bg-blue-500 text-white font-bold shadow hover:bg-blue-600 transition-colors text-base md:text-lg h-12 min-w-[120px] flex items-center justify-center disabled:bg-blue-200 disabled:text-black-900"
-              disabled={!repoUrl || !tab}
+              disabled={!repoUrl || !tab || loading}
               onClick={handleGo}
             >
-              Generate
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Generating...
+                </div>
+              ) : (
+                'Generate'
+              )}
             </button>
           </div>
           <div className="flex flex-col sm:flex-row justify-center gap-2 md:gap-4 w-full">
@@ -318,9 +410,12 @@ function App() {
             repoUrl={repoUrl}
             setRepoUrl={setRepoUrl}
             diagramGenerated={diagramGenerated}
+            diagramData={diagramData}
+            loading={loading}
+            error={error}
           />
         )}
-        {tab === 'podcast' && (
+        {tab === 'podcast' && podcastGenerated && (
           <div className="w-full flex flex-col items-center mt-12" ref={podcastCardRef}>
             <PodcastPlayer
               src="/podcast.mp3"

@@ -3,10 +3,10 @@ import React, { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
 
 interface MermaidDiagramProps {
-  zoomingEnabled?: boolean;
+  diagramCode?: string;
 }
 
-const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ zoomingEnabled = false }) => {
+const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ diagramCode }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -15,7 +15,9 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ zoomingEnabled = false 
     const renderDiagram = async () => {
       if (ref.current) {
         try {
-          const result = await mermaid.render(`diagram-${Date.now()}`, diagramDefinition);
+          const diagramToRender = diagramCode || diagramDefinition;
+          console.log('Mermaid diagramCode:', diagramToRender);
+          const result = await mermaid.render(`diagram-${Date.now()}`, diagramToRender);
           const svg = typeof result === 'string' ? result : result.svg;
           ref.current.innerHTML = '';
           ref.current.insertAdjacentHTML('beforeend', svg);
@@ -26,19 +28,8 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ zoomingEnabled = false 
             svgEl.removeAttribute('height');
             svgEl.style.width = '100%';
             svgEl.style.height = '100%';
-
-            if (zoomingEnabled) {
-              const svgPanZoom = (await import('svg-pan-zoom')).default;
-              svgPanZoom(svgEl, {
-                zoomEnabled: true,
-                controlIconsEnabled: true,
-                fit: true,
-                center: true,
-                minZoom: 0.2,
-                maxZoom: 10,
-                zoomScaleSensitivity: 0.3,
-              });
-            }
+            // Remove any transform/zoom attributes
+            svgEl.removeAttribute('transform');
           }
 
           ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -49,7 +40,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ zoomingEnabled = false 
     };
 
     renderDiagram();
-  }, [zoomingEnabled]);
+  }, [diagramCode]);
 
   const diagramDefinition = `
     flowchart TD
@@ -86,11 +77,11 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({ zoomingEnabled = false 
         Backend --> Storage
         README --> Backend
 
-        classDef ext fill:#E0F7FA,stroke:#00ACC1;
-        classDef external fill:#F1F8E9,stroke:#7CB342;
-        classDef backend fill:#FFF3E0,stroke:#FB8C00;
-        classDef storage fill:#EDE7F6,stroke:#5E35B1;
-        classDef docs fill:#FCE4EC,stroke:#D81B60;
+        classDef ext fill:#E3F2FD,stroke:#1976D2;
+        classDef external fill:#E8F5E8,stroke:#388E3C;
+        classDef backend fill:#FFF8E1,stroke:#F57C00;
+        classDef storage fill:#F3E5F5,stroke:#7B1FA2;
+        classDef docs fill:#FCE4EC,stroke:#C2185B;
   `;
 
   return (
