@@ -7,7 +7,6 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // @ts-expect-error: __dirname is available in Vite config
       '@': path.resolve(__dirname, 'src'),
     },
   },
