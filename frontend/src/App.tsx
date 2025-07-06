@@ -91,7 +91,7 @@ function AnimatedHero() {
   const [displayed, setDisplayed] = useState("");
   const [typing, setTyping] = useState(true);
   const [charIndex, setCharIndex] = useState(0);
-  const timeoutRef = useRef<number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Add a '.' at the end of each word for the animation
   const animatedWord = words[index].text + ".";
