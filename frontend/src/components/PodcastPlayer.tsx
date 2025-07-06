@@ -20,7 +20,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import captionsRaw from '../../sample_captions.txt?raw';
 
 interface PodcastPlayerProps {
   src: string;
@@ -45,22 +44,6 @@ type Caption = {
   start: number;
   end: number;
 };
-
-function parseCaptions(raw: string, duration: number): Caption[] {
-  const lines = raw.trim().split('\n').filter(Boolean);
-  const n = lines.length;
-  const segment = duration / n;
-  const captions: Caption[] = lines.map((line: string, i: number) => {
-    const [role, ...textArr] = line.split(':');
-    return {
-      role: role.trim(),
-      text: textArr.join(':').trim(),
-      start: i * segment,
-      end: (i + 1) * segment,
-    };
-  });
-  return captions;
-}
 
 const PodcastPlayer: React.FC<PodcastPlayerProps> = ({
   src,
@@ -119,7 +102,11 @@ const PodcastPlayer: React.FC<PodcastPlayerProps> = ({
 
   useEffect(() => {
     if (audioRef.current) {
-      playing ? audioRef.current.play() : audioRef.current.pause();
+      if (playing) {
+        audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
     }
   }, [playing]);
 
@@ -376,11 +363,10 @@ function formatTime(sec: number) {
 // CaptionsDisplay component for YouTube-style captions
 interface CaptionsDisplayProps {
   caption: Caption | null;
-  currentTime: number;
   playbackRate: number;
 }
 
-const CaptionsDisplay: React.FC<CaptionsDisplayProps> = ({ caption, currentTime, playbackRate }) => {
+const CaptionsDisplay: React.FC<CaptionsDisplayProps> = ({ caption, playbackRate }) => {
   const [visibleWords, setVisibleWords] = useState(0);
   const words = caption ? caption.text.split(' ') : [];
   const prevCaptionRef = useRef<Caption | null>(null);

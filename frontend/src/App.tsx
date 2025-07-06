@@ -384,7 +384,6 @@ function App() {
         {captionsOn && (
           <CaptionsDisplay
             caption={captions.find((cap: Caption) => currentTime >= cap.start && currentTime < cap.end) || null}
-            currentTime={currentTime}
             playbackRate={speed}
           />
         )}
