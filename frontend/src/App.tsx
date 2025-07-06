@@ -28,7 +28,7 @@ function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8 w-[700px] h-[700px] flex items-center justify-center">
+        <div className="bg-neutral-200 rounded-2xl p-8 w-[1400px] h-[600px] flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-lg font-semibold text-gray-700">Generating diagram...</p>
@@ -42,7 +42,7 @@ function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8 w-[700px] h-[700px] flex items-center justify-center">
+        <div className="bg-neutral-200 rounded-2xl shadow-xl p-8 w-[1400px] h-[600px] flex items-center justify-center">
           <div className="text-center">
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
             <p className="text-lg font-semibold text-gray-700 mb-2">Error generating diagram</p>
@@ -62,8 +62,8 @@ function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
       {diagramGenerated && diagramData && (
-        <div className="flex justify-center items-center w-full min-h-[700px]" ref={imageRef}>
-          <div className="bg-white rounded-2xl shadow-xl flex items-center justify-center w-[700px] h-[700px]">
+        <div className="flex justify-center items-center w-[1400px] min-h-[600px]" ref={imageRef}>
+          <div className="bg-indigo-50 border-2 border-blue-900 shadow-2xl rounded-2xl flex items-center justify-center w-[1400px] h-[600px]">
             <MermaidDiagram
               diagramCode={diagramData.diagram_code}
             />
@@ -201,6 +201,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diagramData, setDiagramData] = useState<{ diagram_code: string } | null>(null);
+  const [lastGeneratedUrl, setLastGeneratedUrl] = useState(''); // Track the URL that was actually generated
 
   // Captions and podcast player state
   const [captionsOn, setCaptionsOn] = useState(false);
@@ -224,12 +225,44 @@ function App() {
     }
   }, [podcastGenerated]);
 
+  // Load persisted data from localStorage on component mount
+  useEffect(() => {
+    const savedDiagramData = localStorage.getItem('gitbridge-diagram-data');
+    const savedDiagramUrl = localStorage.getItem('gitbridge-diagram-url');
+    
+    if (savedDiagramData && savedDiagramUrl) {
+      try {
+        const parsedData = JSON.parse(savedDiagramData);
+        setDiagramData(parsedData);
+        setDiagramGenerated(true);
+        setLastGeneratedUrl(savedDiagramUrl);
+        setRepoUrl(savedDiagramUrl); // Also restore the URL to the input field
+      } catch (error) {
+        console.error('Error loading saved diagram data:', error);
+        localStorage.removeItem('gitbridge-diagram-data');
+        localStorage.removeItem('gitbridge-diagram-url');
+      }
+    }
+  }, []);
+
   // Handle Generate button logic with backend integration
   const handleGo = async () => {
     if (!repoUrl || !tab) return;
     
+    // Reset states only when actually generating new content
     setLoading(true);
     setError(null);
+    
+    // Only reset the current tab's generated state if URL changed
+    if (repoUrl !== lastGeneratedUrl) {
+      if (tab === 'diagram') {
+        setDiagramGenerated(false);
+        setDiagramData(null);
+      }
+      if (tab === 'podcast') {
+        setPodcastGenerated(false);
+      }
+    }
     
     try {
       if (tab === 'diagram') {
@@ -268,10 +301,16 @@ function App() {
         
         setDiagramData(diagramResult);
         setDiagramGenerated(true);
+        setLastGeneratedUrl(repoUrl);
+        
+        // Persist to localStorage
+        localStorage.setItem('gitbridge-diagram-data', JSON.stringify(diagramResult));
+        localStorage.setItem('gitbridge-diagram-url', repoUrl);
       }
       
       if (tab === 'podcast') {
         setPodcastGenerated(true);
+        setLastGeneratedUrl(repoUrl);
       }
     } catch (error) {
       console.error('Error generating content:', error);
@@ -281,12 +320,30 @@ function App() {
     }
   };
 
-  // Reset both states when repoUrl changes
+  // Only update repoUrl, don't reset generated states
   const handleRepoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRepoUrl(e.target.value);
+    // Remove the automatic reset - let users keep their generated content
+    // setDiagramGenerated(false);
+    // setPodcastGenerated(false);
+  };
+
+  // Add function to clear generated content
+  const handleClearContent = () => {
     setDiagramGenerated(false);
     setPodcastGenerated(false);
+    setDiagramData(null);
+    setLastGeneratedUrl('');
+    setError(null);
+    localStorage.removeItem('gitbridge-diagram-data');
+    localStorage.removeItem('gitbridge-diagram-url');
   };
+
+  // Check if current tab has generated content
+  const currentTabHasContent = 
+    (tab === 'diagram' && diagramGenerated) || 
+    (tab === 'podcast' && podcastGenerated) || 
+    (tab === 'talk' && false); // talk doesn't have generated content yet
 
   return (
     <div className="relative min-h-screen">
@@ -305,25 +362,37 @@ function App() {
             <input
               type="text"
               placeholder="https://github.com/username/repo"
-              className="w-full md:w-auto flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-base md:text-lg bg-transparent placeholder:font-medium placeholder-[#475569] text-[#0F172A]"
+              className="w-full md:w-auto flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base font-bold bg-transparent placeholder:font-medium placeholder-[#475569] text-[#0F172A]"
               value={repoUrl}
               onChange={handleRepoUrlChange}
             />
-            <button
-              className="w-full md:w-auto mt-2 md:mt-0 md:ml-2 px-6 md:px-8 py-2 rounded-lg bg-blue-500 text-white font-bold shadow hover:bg-blue-600 transition-colors text-base md:text-lg h-12 min-w-[120px] flex items-center justify-center disabled:bg-blue-200 disabled:text-black-900"
-              disabled={!repoUrl || !tab || loading}
-              onClick={handleGo}
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Generating...
-                </div>
-              ) : (
-                'Generate'
+            <div className="flex gap-2 w-full md:w-auto">
+              <button
+                className="flex-1 md:flex-none md:ml-2 px-6 md:px-8 py-2 rounded-lg bg-blue-500 text-white font-bold shadow hover:bg-blue-600 transition-colors text-base md:text-lg h-12 min-w-[120px] flex items-center justify-center disabled:bg-blue-200 disabled:text-black-900"
+                disabled={!repoUrl || !tab || loading}
+                onClick={handleGo}
+              >
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Generating...
+                  </div>
+                ) : (
+                  'Generate'
+                )}
+              </button>
+              {currentTabHasContent && (
+                <button
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white font-bold shadow hover:bg-red-600 transition-colors text-sm h-12 flex items-center justify-center"
+                  onClick={handleClearContent}
+                  title="Clear generated content"
+                >
+                  Clear
+                </button>
               )}
-            </button>
+            </div>
           </div>
+          
           <div className="flex flex-col sm:flex-row justify-center gap-2 md:gap-4 w-full">
             <button
               className={`w-full sm:w-auto px-4 md:px-6 py-2 rounded-xl font-semibold text-base md:text-lg transition-colors border border-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-400/40 ${tab === 'diagram' ? 'bg-white/90 text-blue-900 shadow font-bold' : 'bg-blue-100/40 text-blue-800 hover:bg-white/60'} hover:shadow`}
@@ -346,8 +415,8 @@ function App() {
           </div>
         </div>
       </div>
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 z-10">
+      {/* Main Content - Increased gap */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-32 z-10">
         {tab === 'diagram' && (
           <DiagramTab
             repoUrl={repoUrl}
