@@ -16,7 +16,7 @@ type TabProps = {
   onGenerate?: () => void;
 };
 
-function DiagramTab({ repoUrl, diagramGenerated, diagramData, loading, error }: TabProps & { diagramData?: any; loading?: boolean; error?: string | null }) {
+function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps & { diagramData?: { diagram_code: string } | null; loading?: boolean; error?: string | null }) {
   const imageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,8 +64,7 @@ function DiagramTab({ repoUrl, diagramGenerated, diagramData, loading, error }: 
       {diagramGenerated && diagramData && (
         <div className="flex justify-center items-center w-full min-h-[700px]" ref={imageRef}>
           <div className="bg-white rounded-2xl shadow-xl flex items-center justify-center w-[700px] h-[700px]">
-            <MermaidDiagram 
-              zoomingEnabled 
+            <MermaidDiagram
               diagramCode={diagramData.diagram_code}
             />
           </div>
@@ -75,63 +74,9 @@ function DiagramTab({ repoUrl, diagramGenerated, diagramData, loading, error }: 
   );
 }
 
-function PodcastTab({ repoUrl, podcastGenerated }: TabProps) {
-  const [captionsOn, setCaptionsOn] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [speed, setSpeed] = useState(1);
-  const [duration, setDuration] = useState(0);
-  const [captions, setCaptions] = useState<Caption[]>([]);
-
-  // Parse captions when duration is set
-  useEffect(() => {
-    if (duration > 0) {
-      setCaptions(parseCaptions(captionsRaw, duration));
-    }
-  }, [duration]);
-
-  const currentCaption = captions.find(
-    (cap: Caption) => currentTime >= cap.start && currentTime < cap.end
-  );
-
-  // Ref for podcast card
-  const podcastCardRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (podcastGenerated && podcastCardRef.current) {
-      podcastCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [podcastGenerated]);
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto" style={{ marginTop: '12rem' }}>
-      {/* <h1 className="text-4xl md:text-5xl font-bold mb-4">Repository to podcast</h1> */}
-      {/* <p className="text-lg mb-2">Transform any GitHub repository into an engaging audio podcast.</p>
-      <p className="mb-2">Perfect for learning about projects while on the go.</p>
-      <p className="text-sm mb-8">Generate AI-powered discussions about code, architecture, and project insights</p> */}
-      {podcastGenerated && (
-        <div className="w-full flex flex-col items-center mt-4" ref={podcastCardRef}>
-          <PodcastPlayer
-            src="/podcast.mp3"
-            artwork="/Pranav.jpeg"
-            title="Sample Podcast Episode"
-            artist="GitBridge AI"
-            captionsOn={captionsOn}
-            onCaptionsToggle={setCaptionsOn}
-            speed={speed}
-            onSpeedChange={setSpeed}
-            currentTime={currentTime}
-            onTimeUpdate={setCurrentTime}
-            onDurationChange={setDuration}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TalkTab({ }: { repoUrl: string; setRepoUrl: (url: string) => void }) {
+function TalkTab() {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-    
     </div>
   );
 }
@@ -146,7 +91,7 @@ function AnimatedHero() {
   const [displayed, setDisplayed] = useState("");
   const [typing, setTyping] = useState(true);
   const [charIndex, setCharIndex] = useState(0);
-  const timeoutRef = useRef<any>(null);
+  const timeoutRef = useRef<number | null>(null);
 
   // Add a '.' at the end of each word for the animation
   const animatedWord = words[index].text + ".";
@@ -175,7 +120,9 @@ function AnimatedHero() {
         setIndex((index + 1) % words.length);
       }
     }
-    return () => clearTimeout(timeoutRef.current);
+    return () => {
+      if (timeoutRef.current !== null) clearTimeout(timeoutRef.current);
+    };
   }, [charIndex, typing, index, animatedWord]);
 
   const currentColor = words[index].color;
@@ -247,13 +194,13 @@ function parseCaptions(raw: string, duration: number): Caption[] {
 }
 
 function App() {
-  const [tab, setTab] = useState<'' | 'diagram' | 'podcast' | 'talk'>('');
+  const [tab, setTab] = useState<'diagram' | 'podcast' | 'talk'>('diagram');
   const [repoUrl, setRepoUrl] = useState('');
   const [diagramGenerated, setDiagramGenerated] = useState(false);
   const [podcastGenerated, setPodcastGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [diagramData, setDiagramData] = useState<any>(null);
+  const [diagramData, setDiagramData] = useState<{ diagram_code: string } | null>(null);
 
   // Captions and podcast player state
   const [captionsOn, setCaptionsOn] = useState(false);
@@ -268,10 +215,6 @@ function App() {
       setCaptions(parseCaptions(captionsRaw, duration));
     }
   }, [duration]);
-
-  const currentCaption = captions.find(
-    (cap: Caption) => currentTime >= cap.start && currentTime < cap.end
-  );
 
   // Ref for podcast card
   const podcastCardRef = useRef<HTMLDivElement>(null);
@@ -289,7 +232,7 @@ function App() {
     setError(null);
     
     try {
-      if (tab === 'diagram' || tab === '') {
+      if (tab === 'diagram') {
         // Step 1: Parse repository
         console.log('Parsing repository:', repoUrl);
         const parseResponse = await fetch('http://localhost:8000/api/parse-repo', {
@@ -327,7 +270,7 @@ function App() {
         setDiagramGenerated(true);
       }
       
-      if (tab === 'podcast' || tab === '') {
+      if (tab === 'podcast') {
         setPodcastGenerated(true);
       }
     } catch (error) {
@@ -433,17 +376,14 @@ function App() {
           </div>
         )}
         {tab === 'talk' && (
-          <TalkTab
-            repoUrl={repoUrl}
-            setRepoUrl={setRepoUrl}
-          />
+          <TalkTab />
         )}
       </main>
       {/* CaptionsDisplay area: always present, fixed min-height to prevent layout shift */}
       <div className="w-full flex flex-col items-center mt-8 min-h-[56px]">
         {captionsOn && (
           <CaptionsDisplay
-            caption={currentCaption || null}
+            caption={captions.find((cap: Caption) => currentTime >= cap.start && currentTime < cap.end) || null}
             currentTime={currentTime}
             playbackRate={speed}
           />
