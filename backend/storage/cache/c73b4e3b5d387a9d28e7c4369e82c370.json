@@ -1,0 +1,41 @@
+{
+  "cache_key": "c73b4e3b5d387a9d28e7c4369e82c370",
+  "repo_url": "https://github.com/PranavReddyGaddam/QuizForge",
+  "duration": 120,
+  "voice_settings": {
+    "host_voice_id": "BWGwF36RwZsLxWHtzZ3e",
+    "expert_voice_id": "4VhEioWwLzhlRxXpucCZ",
+    "stability": 0.75,
+    "similarity_boost": 0.75,
+    "style": 0.5,
+    "use_speaker_boost": true
+  },
+  "files": {
+    "audio_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\audio\\podcast_c73b4e3b5d387a9d28e7c4369e82c370_20250708_222512.wav",
+    "script_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\scripts\\script_c73b4e3b5d387a9d28e7c4369e82c370_20250708_222512.json",
+    "metadata_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\metadata\\metadata_c73b4e3b5d387a9d28e7c4369e82c370_20250708_222512.json"
+  },
+  "metadata": {
+    "repo_name": "QuizForge",
+    "episode_title": "Deep Dive: Understanding QuizForge",
+    "estimated_duration": "03:08",
+    "key_topics": [
+      "React",
+      "Python",
+      "FastAPI",
+      "API",
+      "REST",
+      "microservices",
+      "frontend",
+      "backend"
+    ],
+    "generated_at": "2025-07-08 22:26:14.068251",
+    "script_length": 16,
+    "actual_cost": null
+  },
+  "created_at": "2025-07-08 22:26:14.075637",
+  "last_accessed": "2025-07-09 01:08:46.500523",
+  "access_count": 31,
+  "repo_content_hash": "07ce150ef11de02e16be35b2cb9117e5",
+  "estimated_cost": 0.0
+}

@@ -1,6 +1,13 @@
 from fastapi import APIRouter, HTTPException
-from models.schema import GenerateDiagramRequest, GenerateDiagramResponse, ErrorResponse
-from services.llm import LLMService
+from backend.features.diagram.models import GenerateDiagramRequest, GenerateDiagramResponse, ErrorResponse
+from backend.features.diagram.services import LLMService
+from backend.services.exceptions import (
+    RateLimitExceededException,
+    AuthenticationException,
+    APITimeoutException,
+    LLMServiceException,
+    GitBridgeAPIException
+)
 
 router = APIRouter()
 llm_service = LLMService()
@@ -32,6 +39,16 @@ async def generate_diagram(request: GenerateDiagramRequest):
             explanation=result["explanation"]
         )
         
+    except RateLimitExceededException as e:
+        raise HTTPException(status_code=429, detail=e.message)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=401, detail=e.message)
+    except APITimeoutException as e:
+        raise HTTPException(status_code=408, detail=e.message)
+    except LLMServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except GitBridgeAPIException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -57,6 +74,16 @@ async def test_llm_prompt(request: dict):
         
         return {"response": response}
         
+    except RateLimitExceededException as e:
+        raise HTTPException(status_code=429, detail=e.message)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=401, detail=e.message)
+    except APITimeoutException as e:
+        raise HTTPException(status_code=408, detail=e.message)
+    except LLMServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except GitBridgeAPIException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM test failed: {str(e)}")
 
@@ -79,5 +106,15 @@ async def llm_health_check():
             "model": "qwen/qwen3-32b"
         }
         
+    except RateLimitExceededException as e:
+        raise HTTPException(status_code=429, detail=e.message)
+    except AuthenticationException as e:
+        raise HTTPException(status_code=401, detail=e.message)
+    except APITimeoutException as e:
+        raise HTTPException(status_code=408, detail=e.message)
+    except LLMServiceException as e:
+        raise HTTPException(status_code=503, detail=f"LLM service unhealthy: {e.message}")
+    except GitBridgeAPIException as e:
+        raise HTTPException(status_code=503, detail=f"LLM service unhealthy: {e.message}")
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM service unhealthy: {str(e)}") 

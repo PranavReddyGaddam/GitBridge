@@ -64,3 +64,6 @@ htmlcov/
 # Temporary files
 *.tmp
 *.temp 
+
+#podcast files
+podcast_cache/

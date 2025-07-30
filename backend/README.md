@@ -1,5 +1,20 @@
 # GitBridge Backend
 
+## IMPORTANT: How to Run the Backend
+
+To avoid import errors (ModuleNotFoundError: No module named 'backend'), **always run the backend from the project root** using module syntax:
+
+```sh
+# From the project root (D:\GitBridge\GitBridge):
+python -m backend.start
+# or for development with hot reload:
+python -m uvicorn backend.main:app --reload
+```
+
+**Do NOT run scripts from inside the backend directory** (e.g., `python start.py` from `backend/`). This will break absolute imports.
+
+---
+
 FastAPI backend for GitHub repository diagram generator.
 
 ## 🚀 Features

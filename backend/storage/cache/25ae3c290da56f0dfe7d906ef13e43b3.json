@@ -1,0 +1,35 @@
+{
+  "cache_key": "25ae3c290da56f0dfe7d906ef13e43b3",
+  "repo_url": "https://github.com/octocat/Hello-World",
+  "duration": 60,
+  "voice_settings": {
+    "host_voice_id": "zGjIP4SZlMnY9m93k97r",
+    "expert_voice_id": "L0Dsvb3SLTyegXwtm47J",
+    "stability": 0.75,
+    "similarity_boost": 0.75,
+    "style": 0.5,
+    "use_speaker_boost": true
+  },
+  "files": {
+    "audio_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\audio\\podcast_25ae3c290da56f0dfe7d906ef13e43b3_20250708_031646.wav",
+    "script_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\scripts\\script_25ae3c290da56f0dfe7d906ef13e43b3_20250708_031646.json",
+    "metadata_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\metadata\\metadata_25ae3c290da56f0dfe7d906ef13e43b3_20250708_031646.json"
+  },
+  "metadata": {
+    "repo_name": "Hello-World",
+    "episode_title": "Deep Dive: Understanding Hello-World",
+    "estimated_duration": "02:08",
+    "key_topics": [
+      "REST",
+      "architecture"
+    ],
+    "generated_at": "2025-07-08 03:17:20.753841",
+    "script_length": 13,
+    "actual_cost": 0.0582
+  },
+  "created_at": "2025-07-08 03:17:20.760257",
+  "last_accessed": "2025-07-09 00:51:11.039456",
+  "access_count": 21,
+  "repo_content_hash": "f473fb2f1deb81daae7d13c2e4f47710",
+  "estimated_cost": 0.0582
+}

@@ -1,0 +1,36 @@
+{
+  "cache_key": "316e96864223f44bd5c13d1fa879ef40",
+  "repo_url": "https://github.com/permissionlesstech/bitchat",
+  "duration": 120,
+  "voice_settings": {
+    "host_voice_id": "BWGwF36RwZsLxWHtzZ3e",
+    "expert_voice_id": "4VhEioWwLzhlRxXpucCZ",
+    "stability": 0.75,
+    "similarity_boost": 0.75,
+    "style": 0.5,
+    "use_speaker_boost": true
+  },
+  "files": {
+    "audio_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\audio\\podcast_316e96864223f44bd5c13d1fa879ef40_20250711_001321.wav",
+    "script_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\scripts\\script_316e96864223f44bd5c13d1fa879ef40_20250711_001321.json",
+    "metadata_file_path": "D:\\GitBridge\\GitBridge\\backend\\storage\\podcasts\\metadata\\metadata_316e96864223f44bd5c13d1fa879ef40_20250711_001321.json"
+  },
+  "metadata": {
+    "repo_name": "bitchat",
+    "episode_title": "Deep Dive: Understanding bitchat",
+    "estimated_duration": "01:19",
+    "key_topics": [
+      "API",
+      "REST",
+      "testing"
+    ],
+    "generated_at": "2025-07-11 00:13:46.107858",
+    "script_length": 9,
+    "actual_cost": null
+  },
+  "created_at": "2025-07-11 00:13:46.111856",
+  "last_accessed": "2025-07-11 00:20:32.726803",
+  "access_count": 9,
+  "repo_content_hash": "02c2a4f0eb8a9e30b2466bbb0e92e5f1",
+  "estimated_cost": 0.0
+}

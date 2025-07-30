@@ -1,0 +1,18 @@
+{
+  "repo_name": "QuizForge",
+  "episode_title": "Deep Dive: Understanding QuizForge",
+  "estimated_duration": "03:08",
+  "key_topics": [
+    "React",
+    "Python",
+    "FastAPI",
+    "API",
+    "REST",
+    "microservices",
+    "frontend",
+    "backend"
+  ],
+  "generated_at": "2025-07-08 22:26:14.068251",
+  "script_length": 16,
+  "actual_cost": null
+}

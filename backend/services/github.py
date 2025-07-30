@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 from github import Github
 from github.Repository import Repository
 from github.ContentFile import ContentFile
-from utils.tree_formatter import format_file_tree, clean_tree_output
+from backend.utils.tree_formatter import format_file_tree, clean_tree_output
 
 class GitHubService:
     def __init__(self):

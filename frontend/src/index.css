@@ -2,8 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Font loading optimization */
 body {
   @apply bg-mint-bg;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-display: swap; /* Prevent font loading from blocking */
 }
 
 @keyframes blink {

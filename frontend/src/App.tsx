@@ -4,8 +4,13 @@ import PodcastPlayer from './components/PodcastPlayer'
 import Threads from './components/threads'
 import MermaidDiagram from './components/MermaidDiagram'
 import { CaptionsDisplay } from './components/PodcastPlayer'
+import TalkTab from './components/TalkTab'
 import captionsRaw from '../sample_captions.txt?raw'
 import './App.css'
+import { PodcastAPIService, type GeneratePodcastResponse, type StreamingPodcastResponse, type PodcastCacheEntry } from './services/api'
+import VoiceCustomizationModal from './components/VoiceCustomizationModal'
+// AudioSegment type is already defined in audioSegments state below
+import { LoaderOne } from "@/components/ui/loader";
 
 
 type TabProps = {
@@ -17,18 +22,10 @@ type TabProps = {
 };
 
 function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps & { diagramData?: { diagram_code: string } | null; loading?: boolean; error?: string | null }) {
-  const imageRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (diagramGenerated && imageRef.current) {
-      imageRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [diagramGenerated]);
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-        <div className="bg-neutral-200 rounded-2xl p-8 w-[1400px] h-[600px] flex items-center justify-center">
+        <div className="bg-neutral-200 rounded-2xl p-8 w-[1400px] h-[550px] flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-lg font-semibold text-gray-700">Generating diagram...</p>
@@ -42,7 +39,7 @@ function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-        <div className="bg-neutral-200 rounded-2xl shadow-xl p-8 w-[1400px] h-[600px] flex items-center justify-center">
+        <div className="bg-neutral-200 rounded-2xl shadow-xl p-8 w-[1400px] h-[550px] flex items-center justify-center">
           <div className="text-center">
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
             <p className="text-lg font-semibold text-gray-700 mb-2">Error generating diagram</p>
@@ -62,11 +59,9 @@ function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
       {diagramGenerated && diagramData && (
-        <div className="flex justify-center items-center w-[1400px] min-h-[600px]" ref={imageRef}>
-          <div className="bg-indigo-50 border-2 border-blue-900 shadow-2xl rounded-2xl flex items-center justify-center w-[1400px] h-[600px]">
-            <MermaidDiagram
-              diagramCode={diagramData.diagram_code}
-            />
+        <div className="flex justify-center items-center w-[1400px] min-h-[550px]">
+          <div className="bg-indigo-50 border-2 border-blue-900 shadow-2xl rounded-2xl flex items-center justify-center w-[1400px] min-h-[550px]">
+            <MermaidDiagram diagramCode={diagramData.diagram_code} />
           </div>
         </div>
       )}
@@ -74,12 +69,6 @@ function DiagramTab({ diagramGenerated, diagramData, loading, error }: TabProps 
   );
 }
 
-function TalkTab() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center w-full max-w-2xl mx-auto">
-    </div>
-  );
-}
 
 function AnimatedHero() {
   const words = [
@@ -123,7 +112,7 @@ function AnimatedHero() {
     return () => {
       if (timeoutRef.current !== null) clearTimeout(timeoutRef.current);
     };
-  }, [charIndex, typing, index, animatedWord]);
+  }, [charIndex, typing, index, animatedWord, words.length]);
 
   const currentColor = words[index].color;
 
@@ -170,6 +159,7 @@ function AnimatedHero() {
   );
 }
 
+
 // Helper to parse captions (copy from PodcastPlayer if not already in App)
 type Caption = {
   role: string;
@@ -197,11 +187,41 @@ function App() {
   const [tab, setTab] = useState<'diagram' | 'podcast' | 'talk'>('diagram');
   const [repoUrl, setRepoUrl] = useState('');
   const [diagramGenerated, setDiagramGenerated] = useState(false);
+  
+  // Podcast generation states
+  const [generatedPodcast, setGeneratedPodcast] = useState<GeneratePodcastResponse | null>(null);
+  const [podcastCaptions, setPodcastCaptions] = useState<Caption[]>([]);
+  const [streamingProgress, setStreamingProgress] = useState<StreamingPodcastResponse | null>(null);
+  const [cachedPodcasts, setCachedPodcasts] = useState<PodcastCacheEntry[]>([]);
+  const [loadingCachedPodcasts, setLoadingCachedPodcasts] = useState(false);
+  
+  // Streaming playback states
+  const [audioSegments, setAudioSegments] = useState<Array<{
+    index: number;
+    url: string;
+    duration_ms: number;
+    loaded: boolean;
+    played: boolean;
+  }>>([]);
+
+  
+  // Voice customization states
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [voiceSettings, setVoiceSettings] = useState({
+    host_voice_id: "BWGwF36RwZsLxWHtzZ3e", // Default: Keiron Welch
+    expert_voice_id: "4VhEioWwLzhlRxXpucCZ", // Default: Leon
+    stability: 0.75,
+    similarity_boost: 0.75,
+    style: 0.5,
+    use_speaker_boost: true
+  });
   const [podcastGenerated, setPodcastGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diagramData, setDiagramData] = useState<{ diagram_code: string } | null>(null);
   const [lastGeneratedUrl, setLastGeneratedUrl] = useState(''); // Track the URL that was actually generated
+  const [showPreviousPodcasts, setShowPreviousPodcasts] = useState(false);
+  const [threadsOpacity, setThreadsOpacity] = useState(1);
 
   // Captions and podcast player state
   const [captionsOn, setCaptionsOn] = useState(false);
@@ -209,6 +229,20 @@ function App() {
   const [speed, setSpeed] = useState(1);
   const [duration, setDuration] = useState(0);
   const [captions, setCaptions] = useState<Caption[]>([]);
+
+  // Add new state for voice interface
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [streamingAudioEnabled, setStreamingAudioEnabled] = useState(false);
+  const [repoAnalysis, setRepoAnalysis] = useState<{
+    success: boolean;
+    repo_name: string;
+    repo_description: string;
+    analysis_summary: string;
+    introduction_text: string;
+    introduction_audio_size: number;
+  } | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   // Parse captions when duration is set
   useEffect(() => {
@@ -225,28 +259,99 @@ function App() {
     }
   }, [podcastGenerated]);
 
-  // Load persisted data from localStorage on component mount
+  // Load persisted data from sessionStorage with backend validation
   useEffect(() => {
-    const savedDiagramData = localStorage.getItem('gitbridge-diagram-data');
-    const savedDiagramUrl = localStorage.getItem('gitbridge-diagram-url');
-    
-    if (savedDiagramData && savedDiagramUrl) {
+    const loadPersistedState = async () => {
+      // First, check if backend is reachable
       try {
-        const parsedData = JSON.parse(savedDiagramData);
-        setDiagramData(parsedData);
-        setDiagramGenerated(true);
-        setLastGeneratedUrl(savedDiagramUrl);
-        setRepoUrl(savedDiagramUrl); // Also restore the URL to the input field
-      } catch (error) {
-        console.error('Error loading saved diagram data:', error);
-        localStorage.removeItem('gitbridge-diagram-data');
-        localStorage.removeItem('gitbridge-diagram-url');
-      }
-    }
+        const healthResponse = await fetch(`${API_BASE_URL}/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(3000) // 3 second timeout
+        });
+        
+        if (!healthResponse.ok) {
+          throw new Error('Backend health check failed');
+        }
+        
+        // Backend is reachable, try to restore session state
+        const savedDiagramData = sessionStorage.getItem('gitbridge-diagram-data');
+        const savedDiagramUrl = sessionStorage.getItem('gitbridge-diagram-url');
+        
+        if (savedDiagramData && savedDiagramUrl) {
+          try {
+            const parsedData = JSON.parse(savedDiagramData);
+            setDiagramData(parsedData);
+            setDiagramGenerated(true);
+            setLastGeneratedUrl(savedDiagramUrl);
+            setRepoUrl(savedDiagramUrl); // Also restore the URL to the input field
+            console.log('✅ Restored diagram state from current session');
+          } catch (error) {
+            console.error('Error parsing saved diagram data:', error);
+            clearSessionState();
+          }
+        }
+        
+             } catch {
+         console.log('❌ Backend not reachable or session invalid, clearing state');
+         clearSessionState();
+       }
+    };
+    
+    const clearSessionState = () => {
+      sessionStorage.removeItem('gitbridge-diagram-data');
+      sessionStorage.removeItem('gitbridge-diagram-url');
+      setDiagramData(null);
+      setDiagramGenerated(false);
+      setLastGeneratedUrl('');
+    };
+    
+    loadPersistedState();
   }, []);
 
-  // Handle Generate button logic with backend integration
+  // Get API base URL from environment variable or default to localhost
+  const API_BASE_URL = 'http://localhost:8000';
+
+
+
   const handleGo = async () => {
+    if (tab === 'talk') {
+      // Handle voice interface initialization with repository analysis
+      if (!repoUrl) return;
+      
+      setVoiceLoading(true);
+      
+      try {
+        // Analyze repository during loading
+        const analysisResponse = await fetch('http://localhost:8000/api/voice/analyze-repo', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ repo_url: repoUrl }),
+        });
+
+        if (!analysisResponse.ok) {
+          throw new Error(`Analysis failed: ${analysisResponse.status}`);
+        }
+
+        const analysisData = await analysisResponse.json();
+        console.log('Repository analysis completed:', analysisData);
+        
+        // Store analysis data for the voice interface
+        setRepoAnalysis(analysisData);
+        
+      } catch (error) {
+        console.error('Repository analysis error:', error);
+        // Continue with basic functionality even if analysis fails
+      }
+      
+      // Complete loading and activate voice mode
+      setVoiceLoading(false);
+      setVoiceMode(true);
+      
+      return;
+    }
+
     if (!repoUrl || !tab) return;
     
     // Reset states only when actually generating new content
@@ -264,11 +369,17 @@ function App() {
       }
     }
     
+    if (!repoUrl.includes('github.com')) {
+      setError('Please enter a valid GitHub repository URL');
+      setLoading(false);
+      return;
+    }
+    
     try {
       if (tab === 'diagram') {
         // Step 1: Parse repository
         console.log('Parsing repository:', repoUrl);
-        const parseResponse = await fetch('http://localhost:8000/api/parse-repo', {
+        const parseResponse = await fetch(`${API_BASE_URL}/api/parse-repo`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ repo_url: repoUrl })
@@ -283,7 +394,7 @@ function App() {
         
         // Step 2: Generate diagram
         console.log('Generating diagram...');
-        const diagramResponse = await fetch('http://localhost:8000/api/generate-diagram', {
+        const diagramResponse = await fetch(`${API_BASE_URL}/api/generate-diagram`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -293,7 +404,21 @@ function App() {
         });
         
         if (!diagramResponse.ok) {
-          throw new Error(`Failed to generate diagram: ${diagramResponse.statusText}`);
+          // Try to get more specific error information
+          let errorMessage = `Failed to generate diagram: ${diagramResponse.statusText}`;
+          try {
+            const errorData = await diagramResponse.json();
+            if (errorData.detail) {
+              errorMessage = errorData.detail;
+            }
+          } catch {
+            // If we can't parse error response, keep the generic message
+          }
+          
+          // Create error object with status code
+          const error = new Error(errorMessage) as Error & { statusCode?: number };
+          error.statusCode = diagramResponse.status;
+          throw error;
         }
         
         const diagramResult = await diagramResponse.json();
@@ -303,18 +428,98 @@ function App() {
         setDiagramGenerated(true);
         setLastGeneratedUrl(repoUrl);
         
-        // Persist to localStorage
-        localStorage.setItem('gitbridge-diagram-data', JSON.stringify(diagramResult));
-        localStorage.setItem('gitbridge-diagram-url', repoUrl);
+        // Persist to sessionStorage (session-only persistence)
+        sessionStorage.setItem('gitbridge-diagram-data', JSON.stringify(diagramResult));
+        sessionStorage.setItem('gitbridge-diagram-url', repoUrl);
       }
       
       if (tab === 'podcast') {
-        setPodcastGenerated(true);
-        setLastGeneratedUrl(repoUrl);
+        // Ensure cached podcasts are loaded before checking
+        if (cachedPodcasts.length === 0 && !loadingCachedPodcasts) {
+          console.log('Loading cached podcasts before generation...');
+          await loadCachedPodcasts();
+        }
+
+        // Check for existing cached podcast first
+        console.log('Checking for cached podcast...');
+        const existingPodcast = cachedPodcasts.find(podcast => 
+          podcast.repo_url === repoUrl &&
+          podcast.duration === 5 &&
+          podcast.voice_settings.host_voice_id === voiceSettings.host_voice_id &&
+          podcast.voice_settings.expert_voice_id === voiceSettings.expert_voice_id &&
+          Math.abs(podcast.voice_settings.stability - voiceSettings.stability) < 0.01 &&
+          Math.abs(podcast.voice_settings.similarity_boost - voiceSettings.similarity_boost) < 0.01
+        );
+
+        if (existingPodcast) {
+          console.log('Found existing cached podcast:', existingPodcast);
+          // Convert PodcastCacheEntry to GeneratePodcastResponse format
+          const podcastResponse: GeneratePodcastResponse = {
+            success: true,
+            cache_key: existingPodcast.cache_key || '',
+            files: existingPodcast.files || { audio_file_path: '', script_file_path: '', metadata_file_path: '' },
+            metadata: existingPodcast.metadata || existingPodcast,
+            generation_time_seconds: 0,
+            audio_url: (existingPodcast.files?.audio_file_path) || '',
+            script_url: (existingPodcast.files?.script_file_path) || ''
+          };
+          setGeneratedPodcast(podcastResponse);
+          setPodcastGenerated(true);
+          setLastGeneratedUrl(repoUrl);
+          return;
+        }
+
+        console.log('No cached podcast found, generating new one...');
+        
+        const eventSource = new EventSource(`${API_BASE_URL}/api/generate-podcast?repo_url=${encodeURIComponent(repoUrl)}&duration=5&host_voice_id=${encodeURIComponent(voiceSettings.host_voice_id)}&expert_voice_id=${encodeURIComponent(voiceSettings.expert_voice_id)}&stability=${voiceSettings.stability}&similarity_boost=${voiceSettings.similarity_boost}&stream=true`);
+        
+        // Reset states
+        setStreamingProgress(null);
+        setAudioSegments([]);
+        setStreamingAudioEnabled(true);
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('Received SSE data:', data);
+            
+            if (data.type === 'progress') {
+              setStreamingProgress(data);
+            } else if (data.type === 'audio_segment') {
+              if (streamingAudioEnabled) {
+                setAudioSegments(prev => [...prev, data.segment]);
+              }
+            } else if (data.type === 'complete') {
+              console.log('Podcast generation complete:', data.podcast);
+              setGeneratedPodcast(data.podcast);
+              setPodcastGenerated(true);
+              setLastGeneratedUrl(repoUrl);
+              eventSource.close();
+              
+              // Refresh cached podcasts to include the new one
+              loadCachedPodcasts();
+            } else if (data.type === 'error') {
+              console.error('Podcast generation error:', data.error);
+              throw new Error(data.error);
+            }
+          } catch (parseError) {
+            console.error('Error parsing SSE data:', parseError);
+          }
+        };
+        
+        eventSource.onerror = (event) => {
+          console.error('EventSource error:', event);
+          eventSource.close();
+          throw new Error('Connection lost during podcast generation');
+        };
+        
+        // Store the EventSource reference for cleanup
+        eventSourceRef.current = eventSource;
       }
     } catch (error) {
       console.error('Error generating content:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -328,27 +533,141 @@ function App() {
     // setPodcastGenerated(false);
   };
 
+  // Load cached podcasts
+  const loadCachedPodcasts = async () => {
+    if (loadingCachedPodcasts) return;
+    
+    setLoadingCachedPodcasts(true);
+    try {
+      const cached = await PodcastAPIService.getCachedPodcasts(20);
+      setCachedPodcasts(cached);
+    } catch (error) {
+      console.error('Failed to load cached podcasts:', error);
+    } finally {
+      setLoadingCachedPodcasts(false);
+    }
+  };
+
+  // Load a cached podcast
+  const loadCachedPodcast = async (cacheEntry: PodcastCacheEntry) => {
+    try {
+      // Create GeneratePodcastResponse from cache entry
+      const podcastResponse: GeneratePodcastResponse = {
+        success: true,
+        cache_key: cacheEntry.cache_key,
+        files: cacheEntry.files,
+        metadata: cacheEntry.metadata,
+        generation_time_seconds: 0,
+        audio_url: PodcastAPIService.getPodcastAudioUrl(cacheEntry.cache_key),
+        script_url: cacheEntry.files.script_file_path
+      };
+      
+      setGeneratedPodcast(podcastResponse);
+      
+      // Load captions
+      const scriptData = await PodcastAPIService.getPodcastScript(cacheEntry.cache_key);
+      setPodcastCaptions(scriptData.script);
+      
+      setPodcastGenerated(true);
+      setLastGeneratedUrl(cacheEntry.repo_url);
+    } catch (error) {
+      console.error('Failed to load cached podcast:', error);
+      alert('Failed to load cached podcast');
+    }
+  };
+
+  // Load cached podcasts when podcast tab is selected
+  useEffect(() => {
+    if (tab === 'podcast') {
+      loadCachedPodcasts();
+    }
+  }, [tab, loadCachedPodcasts]);
+
   // Add function to clear generated content
   const handleClearContent = () => {
-    setDiagramGenerated(false);
-    setPodcastGenerated(false);
-    setDiagramData(null);
-    setLastGeneratedUrl('');
-    setError(null);
-    localStorage.removeItem('gitbridge-diagram-data');
-    localStorage.removeItem('gitbridge-diagram-url');
+    if (tab === 'talk') {
+      setVoiceMode(false);
+      setVoiceLoading(false);
+      setRepoAnalysis(null);
+      return;
+    }
+    
+    if (tab === 'diagram') {
+      setDiagramGenerated(false);
+      setDiagramData(null);
+      setError(null);
+      
+      // Clear persisted data
+      sessionStorage.removeItem('gitbridge-diagram-data');
+      sessionStorage.removeItem('gitbridge-diagram-url');
+      setLastGeneratedUrl('');
+    } else if (tab === 'podcast') {
+      setPodcastGenerated(false);
+      setPodcastCaptions([]);
+      setStreamingProgress(null);
+      setAudioSegments([]);
+      
+      // Close any active streaming connections
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      setLastGeneratedUrl('');
+    }
   };
+
+
 
   // Check if current tab has generated content
   const currentTabHasContent = 
     (tab === 'diagram' && diagramGenerated) || 
     (tab === 'podcast' && podcastGenerated) || 
-    (tab === 'talk' && false); // talk doesn't have generated content yet
+    (tab === 'talk' && voiceMode); // talk doesn't have generated content yet
+
+  // Scroll tracking for threads fade effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      const fadeStartDistance = 50; // Start fading after 50px scroll
+      const fadeCompleteDistance = 300; // Complete fade at 300px scroll
+      
+      let opacity = 1;
+      if (scrollPosition > fadeStartDistance) {
+        const fadeRange = fadeCompleteDistance - fadeStartDistance;
+        const scrollInFadeRange = scrollPosition - fadeStartDistance;
+        opacity = Math.max(0, 1 - (scrollInFadeRange / fadeRange));
+      }
+      
+      setThreadsOpacity(opacity);
+    };
+
+    // Throttle scroll events for better performance
+    let ticking = false;
+    const throttledHandleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', throttledHandleScroll);
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen">
-      <div className="fixed inset-0 -z-10">
-        <Threads color={[0, 0, 1]} amplitude={1} distance={0.3} enableMouseInteraction />
+      <div 
+        className="fixed inset-0 -z-10 transition-opacity duration-300 ease-out"
+        style={{ opacity: threadsOpacity }}
+      >
+        <Threads color={[0.7, 0.65, 0.85]} amplitude={1} distance={0.3} enableMouseInteraction />
       </div>
       <Navbar />
       {/* Move hero text even higher */}
@@ -362,28 +681,28 @@ function App() {
             <input
               type="text"
               placeholder="https://github.com/username/repo"
-              className="w-full md:w-auto flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base font-bold bg-transparent placeholder:font-medium placeholder-[#475569] text-[#0F172A]"
+              className="w-full md:w-auto flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm md:text-base font-semibold bg-transparent placeholder:font-medium placeholder-[#475569] text-[#0F172A]"
               value={repoUrl}
               onChange={handleRepoUrlChange}
             />
             <div className="flex gap-2 w-full md:w-auto">
               <button
                 className="flex-1 md:flex-none md:ml-2 px-6 md:px-8 py-2 rounded-lg bg-blue-500 text-white font-bold shadow hover:bg-blue-600 transition-colors text-base md:text-lg h-12 min-w-[120px] flex items-center justify-center disabled:bg-blue-200 disabled:text-black-900"
-                disabled={!repoUrl || !tab || loading}
+                disabled={!repoUrl || !tab || loading || voiceLoading}
                 onClick={handleGo}
               >
-                {loading ? (
+                {loading || voiceLoading ? (
                   <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Generating...
+                    <div className="animate-spin rounded-full h-4 w-4 font-semibold border-b-2 border-white mr-2"></div>
+                    {tab === 'talk' ? 'Starting...' : 'Generating...'}
                   </div>
                 ) : (
-                  'Generate'
+                  tab === 'talk' ? 'Start' : 'Generate'
                 )}
               </button>
               {currentTabHasContent && (
                 <button
-                  className="px-4 py-2 rounded-lg bg-red-500 text-white font-bold shadow hover:bg-red-600 transition-colors text-sm h-12 flex items-center justify-center"
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold shadow hover:bg-red-600 transition-colors text-sm h-12 flex items-center justify-center"
                   onClick={handleClearContent}
                   title="Clear generated content"
                 >
@@ -393,7 +712,7 @@ function App() {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row justify-center gap-2 md:gap-4 w-full">
+          <div className="flex flex-col sm:flex-row justify-center gap-2 md:gap-4 w-full relative">
             <button
               className={`w-full sm:w-auto px-4 md:px-6 py-2 rounded-xl font-semibold text-base md:text-lg transition-colors border border-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-400/40 ${tab === 'diagram' ? 'bg-white/90 text-blue-900 shadow font-bold' : 'bg-blue-100/40 text-blue-800 hover:bg-white/60'} hover:shadow`}
               onClick={() => setTab('diagram')}
@@ -413,6 +732,19 @@ function App() {
               Talk
             </button>
           </div>
+          
+          {/* Duration Selector and Voice Settings - appears only when podcast tab is selected */}
+          {tab === 'podcast' && (
+            <div className="absolute bottom-4 right-4 flex items-center gap-2">
+              <button
+                onClick={() => setShowVoiceModal(true)}
+                className="rounded-md bg-white/50 backdrop-blur-sm px-3 py-2 text-xs font-semibold text-blue-900 border border-blue-200/60 ring-1 ring-blue-100/60 shadow-sm cursor-pointer hover:bg-white/70 transition-colors h-10 flex items-center justify-center"
+                title="Voice Settings"
+              >
+                Customize
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {/* Main Content - Increased gap */}
@@ -427,12 +759,186 @@ function App() {
             error={error}
           />
         )}
-        {tab === 'podcast' && podcastGenerated && (
+        
+        {/* Podcast Error Display */}
+        {tab === 'podcast' && error && !loading && !streamingProgress && (
+          <div className="w-full flex flex-col items-center mt-12">
+            <div className="bg-neutral-200 rounded-2xl shadow-xl p-8 w-[700px] h-[450px] flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-red-500 text-6xl mb-4">⚠️</div>
+                <p className="text-lg font-semibold text-gray-700 mb-2">Error generating podcast</p>
+                <p className="text-sm text-gray-500">{error}</p>
+                <button 
+                  onClick={() => setError(null)}
+                  className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {tab === 'podcast' && (loading || (streamingProgress && streamingProgress.status !== 'complete')) && (
+          <div className="w-full flex flex-col items-center mt-12 space-y-6">
+            
+            {/* Streaming Audio Player */}
+            {streamingAudioEnabled && audioSegments.length > 0 && (
+              <PodcastPlayer
+                segments={audioSegments}
+                isGenerating={loading || (streamingProgress?.status !== 'complete')}
+                isComplete={streamingProgress?.status === 'complete'}
+                artwork="/Pranav.jpeg"
+                title={repoUrl.split('/').pop() ? `${repoUrl.split('/').pop()} Podcast (Live)` : "Live Podcast Generation"}
+                artist="GitBridge AI"
+              />
+            )}
+            
+            <div className="bg-gradient-to-br from-blue-900/60 via-blue-700/40 to-blue-400/30 backdrop-blur-lg border border-blue-200/30 rounded-2xl p-8 w-[700px] h-[450px] flex flex-col items-center justify-center shadow-2xl">
+              
+              {/* Main Status */}
+              <div className="text-center mb-8">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-400 mx-auto mb-6"></div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {streamingProgress?.status === 'processing' ? 'Generating Podcast...' : streamingProgress?.status === 'complete' ? 'Complete!' : 'Initializing...'}
+                </h2>
+                <p className="text-blue-100 text-lg">
+                  {streamingProgress?.status === 'complete' ? 'Podcast generation complete!' : streamingProgress?.message || 'Setting up podcast generation'}
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              {streamingProgress && (
+                <div className="w-full max-w-md mb-6">
+                  <div className="flex justify-between text-sm text-blue-200 mb-2">
+                    <span>Progress</span>
+                    <span>{Math.round(streamingProgress.progress * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200/20 rounded-full h-3 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${streamingProgress.progress * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Segment Progress */}
+              {streamingProgress && streamingProgress.total_segments > 0 && (
+                <div className="w-full max-w-md mb-6">
+                  <div className="flex justify-between text-sm text-blue-200 mb-2">
+                    <span>Audio Segments</span>
+                    <span>{streamingProgress.segment_index} / {streamingProgress.total_segments}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    {Array.from({ length: streamingProgress.total_segments }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`flex-1 h-2 rounded ${
+                          i < streamingProgress.segment_index 
+                            ? 'bg-blue-400' 
+                            : i === streamingProgress.segment_index 
+                            ? 'bg-blue-300 animate-pulse' 
+                            : 'bg-blue-200/30'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Stage Indicators */}
+              <div className="flex items-center gap-4 text-sm">
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                  !streamingProgress || streamingProgress.progress < 0.3 
+                    ? 'bg-blue-500/50 text-white' 
+                    : 'bg-green-500/50 text-green-100'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    !streamingProgress || streamingProgress.progress < 0.3 
+                      ? 'bg-white animate-pulse' 
+                      : 'bg-green-200'
+                  }`} />
+                  <span>Script Generation</span>
+                </div>
+                
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                  !streamingProgress || streamingProgress.progress < 0.3 
+                    ? 'bg-blue-200/20 text-blue-200' 
+                    : streamingProgress.progress < 0.9 
+                    ? 'bg-blue-500/50 text-white' 
+                    : 'bg-green-500/50 text-green-100'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    !streamingProgress || streamingProgress.progress < 0.3 
+                      ? 'bg-blue-200/40' 
+                      : streamingProgress.progress < 0.9 
+                      ? 'bg-white animate-pulse' 
+                      : 'bg-green-200'
+                  }`} />
+                  <span>Audio Generation</span>
+                </div>
+                
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                  !streamingProgress || streamingProgress.progress < 0.9 
+                    ? 'bg-blue-200/20 text-blue-200' 
+                    : 'bg-green-500/50 text-green-100'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    !streamingProgress || streamingProgress.progress < 0.9 
+                      ? 'bg-blue-200/40' 
+                      : 'bg-green-200 animate-pulse'
+                  }`} />
+                  <span>Finalizing</span>
+                </div>
+              </div>
+
+              {/* Time Estimate */}
+              <p className="text-blue-200 text-sm mt-4">
+                This usually takes 2-4 minutes depending on repository size
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {tab === 'podcast' && (podcastGenerated && !loading) && (
           <div className="w-full flex flex-col items-center mt-12" ref={podcastCardRef}>
             <PodcastPlayer
-              src="/podcast.mp3"
+              src={generatedPodcast ? PodcastAPIService.getPodcastAudioUrl(generatedPodcast.cache_key) : "/podcast.mp3"}
               artwork="/Pranav.jpeg"
-              title="Sample Podcast Episode"
+              title={generatedPodcast ? `${generatedPodcast.metadata.repo_name} Podcast` : "Sample Podcast Episode"}
+              artist="GitBridge AI"
+              captionsOn={captionsOn}
+              onCaptionsToggle={setCaptionsOn}
+              speed={speed}
+              onSpeedChange={setSpeed}
+              currentTime={currentTime}
+              onTimeUpdate={setCurrentTime}
+              onDurationChange={setDuration}
+              cacheKey={generatedPodcast?.cache_key}
+            />
+            
+            {/* CaptionsDisplay closer to the card */}
+            <div className="w-full flex flex-col items-center mt-6 px-4">
+              {captionsOn && (
+                <CaptionsDisplay
+                  caption={(generatedPodcast ? podcastCaptions : captions).find((cap: Caption) => currentTime >= cap.start && currentTime < cap.end) || null}
+                  playbackRate={speed}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Show completed streaming podcast player */}
+        {tab === 'podcast' && streamingProgress?.status === 'complete' && audioSegments.length > 0 && (
+          <div className="w-full flex flex-col items-center mt-12" ref={podcastCardRef}>
+            <PodcastPlayer
+              segments={audioSegments}
+              isGenerating={false}
+              isComplete={true}
+              artwork="/Pranav.jpeg"
+              title={repoUrl.split('/').pop() ? `${repoUrl.split('/').pop()} Podcast` : "Generated Podcast"}
               artist="GitBridge AI"
               captionsOn={captionsOn}
               onCaptionsToggle={setCaptionsOn}
@@ -442,21 +948,140 @@ function App() {
               onTimeUpdate={setCurrentTime}
               onDurationChange={setDuration}
             />
+            
+            {/* CaptionsDisplay for streaming */}
+            <div className="w-full flex flex-col items-center mt-6 px-4">
+              {captionsOn && (
+                <CaptionsDisplay
+                  caption={captions.find((cap: Caption) => currentTime >= cap.start && currentTime < cap.end) || null}
+                  playbackRate={speed}
+                />
+              )}
+            </div>
           </div>
         )}
+        
+        {/* Previous Podcasts Button and Modal */}
+        {tab === 'podcast' && (
+          <>
+            {/* Fixed Button */}
+            <button
+              className="fixed bottom-6 right-6 z-50 rounded-md bg-white/80 backdrop-blur-sm px-4 py-2 text-base font-semibold text-blue-900 border border-blue-200/60 ring-1 ring-blue-100/60 shadow-lg cursor-pointer hover:bg-white/90 transition-colors"
+              onClick={() => setShowPreviousPodcasts(true)}
+            >
+              Previous Podcasts
+            </button>
+            {/* Modal/Tooltip */}
+            {showPreviousPodcasts && (
+              <div className="fixed bottom-24 right-8 z-50 w-[350px] max-h-[70vh] overflow-y-auto overflow-x-hidden bg-gradient-to-br from-blue-900/60 via-blue-700/40 to-blue-400/30 backdrop-blur-lg border border-blue-200/30 rounded-2xl p-4 shadow-2xl animate-fade-in">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
+                    </svg>
+                    Previously Generated Podcasts
+                  </h3>
+                  <button
+                    className="text-white text-xl font-bold hover:text-blue-200 transition-colors ml-2"
+                    onClick={() => setShowPreviousPodcasts(false)}
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="grid gap-2 max-h-[55vh] overflow-y-auto overflow-x-hidden">
+                  {cachedPodcasts.length === 0 && (
+                    <div className="text-blue-100 text-center py-6 text-sm">No podcasts found.</div>
+                  )}
+                  {cachedPodcasts.map((podcast) => (
+                    <div
+                      key={podcast.cache_key}
+                      className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-3 hover:bg-white/20 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-md group"
+                      onClick={() => { loadCachedPodcast(podcast); setShowPreviousPodcasts(false); }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-semibold text-base mb-1 truncate group-hover:text-blue-200 transition-colors">
+                            {podcast.metadata.repo_name || 'Unknown Repository'}
+                          </h4>
+                          <p className="text-blue-100/80 text-xs break-all mb-2 font-medium">
+                            {podcast.repo_url}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-blue-200 text-xs font-medium">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {podcast.duration} min
+                            </span>
+                            <span className="text-xs text-blue-100/80 font-medium">
+                              {new Date(podcast.last_accessed).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center text-blue-200/60 group-hover:text-blue-100 transition-colors ml-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {loadingCachedPodcasts && (
+                  <div className="text-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto"></div>
+                    <p className="text-gray-300 mt-2 text-xs">Loading cached podcasts...</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        
         {tab === 'talk' && (
-          <TalkTab />
+          <>
+            {voiceLoading && (
+              <div className="w-full flex flex-col items-center mt-12">
+                <LoaderOne />
+                <p className="text-sm text-gray-500 text-center mt-4">Initializing voice interface...</p>
+              </div>
+            )}
+            
+                              {voiceMode && !voiceLoading && (
+                    <TalkTab repoUrl={repoUrl} repoAnalysis={repoAnalysis} />
+                  )}
+            
+
+          </>
         )}
       </main>
-      {/* CaptionsDisplay area: always present, fixed min-height to prevent layout shift */}
-      <div className="w-full flex flex-col items-center mt-8 min-h-[56px]">
-        {captionsOn && (
-          <CaptionsDisplay
-            caption={captions.find((cap: Caption) => currentTime >= cap.start && currentTime < cap.end) || null}
-            playbackRate={speed}
-          />
-        )}
-      </div>
+      {/* Voice Customization Modal */}
+      <VoiceCustomizationModal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        voiceSettings={voiceSettings}
+        onVoiceSettingsChange={setVoiceSettings}
+      />
+      <footer className="w-full flex items-center justify-center mt-16">
+        <div className="flex items-center gap-2 text-blue-900 dark:text-blue-100 font-medium text-base">
+          Made by
+          <a
+            href="https://github.com/pranavreddygaddam"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-bold text-base ml-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent underline decoration-transparent transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 relative after:absolute after:left-0 after:-bottom-1 after:w-full after:h-0.5 after:bg-gradient-to-r after:from-blue-400 after:to-purple-400 after:rounded-full after:scale-x-0 after:origin-left hover:after:scale-x-100 after:transition-transform after:duration-300"
+            tabIndex={0}
+            aria-label="Pranav Reddy Gaddam GitHub"
+            style={{
+              position: 'relative',
+              display: 'inline-block',
+            }}
+          >
+            Pranav Reddy Gaddam
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

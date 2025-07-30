@@ -1,20 +1,44 @@
-# GitHub access
+# GitHub access  
 PyGithub==1.59.1
 
-# FastAPI backend
-fastapi==0.115.6
-uvicorn==0.34.0
-python-multipart==0.0.19  # For file upload if needed
+# FastAPI backend  
+fastapi==0.115.6  
+uvicorn==0.34.0  
+python-multipart==0.0.19  # For file upload if needed  
 
-# HTTP + LLM integration
-requests==2.32.4
+# HTTP + LLM integration  
+requests==2.32.4  
 
-# Prompt token estimation
-tiktoken==0.8.0
+# Prompt token estimation  
+tiktoken==0.8.0  
 
-# Environment & config
-python-dotenv==1.0.1
-pydantic==2.10.3
+# Environment & config  
+python-dotenv==1.0.1  
+pydantic==2.10.3  
 
-# Optional (nice to have)
-rich==13.9.4
+# Optional (nice to have)  
+rich==13.9.4  
+
+# Audio processing for podcast generation  
+pydub==0.25.1  
+imageio-ffmpeg==0.5.1  
+
+# Speech-to-text (STT)  
+faster-whisper==1.0.1  
+
+# AWS (S3 + Polly)  
+boto3==1.34.113  
+
+# Async file handling  
+aiofiles==23.2.1  
+
+# Real-time communication  
+websockets==12.0
+
+# Voice Activity Detection (VAD)
+silero-vad
+torch==2.7.1       # Or your compatible version
+numpy==1.26.4
+
+# Text-to-Speech fallback (when AWS Polly not available)
+pyttsx3==2.90

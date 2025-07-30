@@ -1,9 +1,13 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from routers import parse, generate
+from fastapi.responses import FileResponse
+from backend.features.diagram.routes import router as diagram_router
+from backend.routers.generate import router as generate_router
+from backend.features.podcast.routes import router as podcast_router
+from backend.features.voice.routes import router as voice_router
 
 # Load environment variables from the backend directory
 backend_dir = Path(__file__).parent
@@ -25,8 +29,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(parse.router, prefix="/api", tags=["parse"])
-app.include_router(generate.router, prefix="/api", tags=["generate"])
+app.include_router(diagram_router, prefix="/api", tags=["parse"])
+app.include_router(generate_router, prefix="/api", tags=["generate"])
+app.include_router(podcast_router, prefix="/api", tags=["podcast"])
+app.include_router(voice_router, prefix="/api/voice", tags=["voice"])
 
 @app.get("/")
 async def root():
@@ -35,6 +41,51 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.post("/api/analyze-repo")
+async def analyze_repo(request: dict):
+    """
+    Analyze a GitHub repository to provide context for voice conversations.
+    This is a simplified version that provides basic repository information.
+    """
+    try:
+        repo_url = request.get("repo_url", "")
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="Repository URL is required")
+        
+        # Extract owner and repo name from URL
+        import re
+        match = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
+        if not match:
+            raise HTTPException(status_code=400, detail="Invalid GitHub repository URL")
+        
+        owner, repo_name = match.groups()
+        
+        # For now, return basic information
+        # In a full implementation, you could use GitHub API to fetch real data
+        repo_info = {
+            "structure": {
+                "owner": owner,
+                "name": repo_name,
+                "type": "repository"
+            },
+            "key_files": ["README.md", "package.json", "src/", "docs/"],
+            "technologies": ["JavaScript", "TypeScript", "Python", "React"],
+            "description": f"Repository {owner}/{repo_name} - A software project hosted on GitHub."
+        }
+        
+        return repo_info
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Fallback response for any errors
+        return {
+            "structure": {"type": "unknown"},
+            "key_files": [],
+            "technologies": [],
+            "description": "Repository analysis not available"
+        }
 
 if __name__ == "__main__":
     import uvicorn

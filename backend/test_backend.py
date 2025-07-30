@@ -34,7 +34,7 @@ async def test_github_service():
 
 async def test_llm_service():
     """Test LLM service functionality."""
-    from services.llm import LLMService
+    from backend.features.diagram.services import LLMService
     
     print("🧪 Testing LLM Service...")
     
@@ -51,7 +51,7 @@ async def test_llm_service():
 
 async def test_tree_formatter():
     """Test tree formatter functionality."""
-    from utils.tree_formatter import format_file_tree, get_file_icon
+    from backend.utils.tree_formatter import format_file_tree, get_file_icon
     
     print("🧪 Testing Tree Formatter...")
     

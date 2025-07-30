@@ -1,0 +1,47 @@
+[
+  {
+    "timestamp": "00:00",
+    "speaker": "HOST",
+    "text": "Welcome to TechDive! I’m Alex, and today we’re exploring an intriguing project called *bitchat*. Joining me is developer Sam, who’s been deep in the code. Sam, walk me through the basics."
+  },
+  {
+    "timestamp": "00:15",
+    "speaker": "EXPERT",
+    "text": "Sure! Bitchat is a decentralized chat app that uses Bitcoin transactions to send *encrypted* messages. Think of it as leveraging the blockchain as a global message board."
+  },
+  {
+    "timestamp": "00:30",
+    "speaker": "HOST",
+    "text": "Wait—so messages are stored in the blockchain itself? How does that fit with Bitcoin’s intended use?"
+  },
+  {
+    "timestamp": "00:45",
+    "speaker": "EXPERT",
+    "text": "Exactly. It uses **OP_RETURN** outputs, which are meant for metadata. Each message is encrypted and attached there. It’s a clever workaround—no changes to Bitcoin’s core rules."
+  },
+  {
+    "timestamp": "01:00",
+    "speaker": "HOST",
+    "text": "Got it. But if it’s encrypted, how do recipients even know there’s a message for them?"
+  },
+  {
+    "timestamp": "01:15",
+    "speaker": "EXPERT",
+    "text": "They use a P2P network to index OP_RETURN data. Once they find a message with their public key, they decrypt it using their private key. Privacy’s solid, but scalability’s a puzzle."
+  },
+  {
+    "timestamp": "01:30",
+    "speaker": "HOST",
+    "text": "Scalability—can you break that down? I mean, isn’t the blockchain slow for regular transactions, let alone messages?"
+  },
+  {
+    "timestamp": "01:45",
+    "speaker": "EXPERT",
+    "text": "Definitely. Each message is a transaction, so if many users send chats, fees spike and delays happen. They optimize with batching and compact serialization, but it’s still a trade-off."
+  },
+  {
+    "timestamp": "02:00",
+    "speaker": "HOST",
+    "text": "Thanks for the clarity, Sam! That’s the show. Stay tuned for more!"
+  }
+]

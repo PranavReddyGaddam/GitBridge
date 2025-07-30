@@ -1,0 +1,16 @@
+{
+  "repo_name": "trae-agent",
+  "episode_title": "Deep Dive: Understanding trae-agent",
+  "estimated_duration": "03:22",
+  "key_topics": [
+    "Python",
+    "API",
+    "REST",
+    "Docker",
+    "architecture",
+    "testing"
+  ],
+  "generated_at": "2025-07-09 01:30:19.630860",
+  "script_length": 16,
+  "actual_cost": null
+}

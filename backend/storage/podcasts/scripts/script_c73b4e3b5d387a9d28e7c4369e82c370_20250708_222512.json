@@ -1,0 +1,82 @@
+[
+  {
+    "timestamp": "00:00",
+    "speaker": "HOST",
+    "text": "Hey everyone, welcome back to the QuizForge Tech Podcast! Today we’re diving into an AI-powered learning platform called QuizForge, which turns study materials into quizzes, flashcards, and summaries. Joining me is Alex, a full-stack developer who’s been deep in the codebase. So, Alex, first, what exactly is QuizForge?"
+  },
+  {
+    "timestamp": "00:15",
+    "speaker": "EXPERT",
+    "text": "Oh, cool question! So, QuizForge is like a smart study buddy. Users upload PDFs or text, and the app uses AI to auto-generate quizzes, flashcards, and summaries. It’s perfect for students or teachers who want to streamline review without manually creating content."
+  },
+  {
+    "timestamp": "00:30",
+    "speaker": "HOST",
+    "text": "Got it. So it’s not just a tool but a whole learning ecosystem? Why is this a standout project for developers?"
+  },
+  {
+    "timestamp": "00:40",
+    "speaker": "EXPERT",
+    "text": "Yeah, it’s a great example because it ties together a FastAPI backend and a Next.js frontend *while* handling AI workloads. You know how AI can be slow? They use async support in FastAPI to keep things snappy, and the frontend is modular so it scales cleanly."
+  },
+  {
+    "timestamp": "00:58",
+    "speaker": "HOST",
+    "text": "Async makes sense for handling heavy AI tasks. Let’s unpack the backend—how does FastAPI manage the AI processing?"
+  },
+  {
+    "timestamp": "01:05",
+    "speaker": "EXPERT",
+    "text": "Oh, right! So when a user uploads a PDF, the backend parses it, then sends chunks to the AI model via OpenRouter. Here’s the kicker: FastAPI’s async routes let the server handle other requests instead of waiting for the AI to finish. It’s like multitasking without making the user wait."
+  },
+  {
+    "timestamp": "01:25",
+    "speaker": "HOST",
+    "text": "Nice analogy. What about the frontend? Why Next.js and Tailwind CSS?"
+  },
+  {
+    "timestamp": "01:30",
+    "speaker": "EXPERT",
+    "text": "Next.js gives them server-side rendering for speed and SEO, plus it’s easy to build reusable components. And Tailwind? It’s a styling powerhouse. They created a custom component library so the UI stays consistent across quizzes, flashcards, and summaries. You know, like having a “study kit” theme everywhere."
+  },
+  {
+    "timestamp": "01:50",
+    "speaker": "HOST",
+    "text": "Oh, I’ve used Tailwind, and it’s a game-changer for rapid prototyping. QuizForge uses a 32B parameter model via OpenRouter—huge! Why go that big?"
+  },
+  {
+    "timestamp": "02:00",
+    "speaker": "EXPERT",
+    "text": "Larger models like Qwen 3-32B are better at understanding complex topics and generating nuanced questions. But yeah, it’s a balancing act. They had to optimize costs and latency, so async becomes *critical*—otherwise, users would face huge delays."
+  },
+  {
+    "timestamp": "02:15",
+    "speaker": "HOST",
+    "text": "And that’s where the async magic in FastAPI really shines. What’s a challenge they faced with such a massive model?"
+  },
+  {
+    "timestamp": "02:25",
+    "speaker": "EXPERT",
+    "text": "Oh, um, the model’s size means higher costs and longer processing times. They had to implement rate limiting and batch requests where possible. Imagine trying to summarize a 500-page textbook—it’s a lot of compute power!"
+  },
+  {
+    "timestamp": "02:40",
+    "speaker": "HOST",
+    "text": "Definitely. So, for someone building a similar app, what’s the one lesson they should take away?"
+  },
+  {
+    "timestamp": "02:45",
+    "speaker": "EXPERT",
+    "text": "That scalability and user experience go hand-in-hand. Even with heavy AI workloads, you can keep things fast with the right tools—async backends, component-driven frontends, and smart API usage."
+  },
+  {
+    "timestamp": "03:00",
+    "speaker": "HOST",
+    "text": "Perfect wrap-up. Thanks for breaking it down, Alex! And listeners, if you want to see how this all comes together, head to the repo and check out the code. Big thanks to Alex for joining us today—until next time, keep building!"
+  },
+  {
+    "timestamp": "03:15",
+    "speaker": "EXPERT",
+    "text": "And keep studying smart!"
+  }
+]
