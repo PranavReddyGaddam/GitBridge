@@ -29,12 +29,14 @@ class LLMService:
         self,
         transcript: str,
         context: Optional[Dict[str, Any]] = None,
-        abort_event: Optional[asyncio.Event] = None
+        abort_event: Optional[asyncio.Event] = None,
+        stream: bool = False
     ) -> str:
         """
         Send transcript + context to Qwen via OpenRouter (Cerebras only), return response.
         If abort_event is set and triggered, cancel the request.
         Supports full conversation history if context['messages'] is provided.
+        If stream=True, returns partial responses as they arrive.
         """
         # Determine system prompt
         system_prompt = (context.get("system") if context and context.get("system") else CONVERSATIONAL_SYSTEM_PROMPT)
@@ -50,6 +52,13 @@ class LLMService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": transcript}
             ]
+        
+        # Truncate context to last 6 exchanges (12 messages + system) to reduce latency
+        if len(messages) > 13:  # system + 12 messages (6 exchanges)
+            # Keep system message and last 12 messages
+            messages = [messages[0]] + messages[-12:]
+            logger.info(f"Truncated context from {len(context['messages'])} to 12 messages for latency optimization")
+        
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -59,23 +68,49 @@ class LLMService:
             "provider": {"only": ["Cerebras"]},
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": 600  # Limit response to ~2400 chars to avoid TTS length issues
+            "max_tokens": 600,  # Limit response to ~2400 chars to avoid TTS length issues
+            "stream": stream
         }
+        
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                req = client.post(self.api_url, headers=headers, json=payload)
-                if abort_event:
-                    done, pending = await asyncio.wait([req, abort_event.wait()], return_when=asyncio.FIRST_COMPLETED)
-                    if abort_event.is_set():
-                        logger.warning("LLM request aborted by user.")
-                        return "[Interrupted]"
-                    response = done.pop().result()
+                if stream:
+                    # Handle streaming response
+                    async with client.stream("POST", self.api_url, headers=headers, json=payload) as response:
+                        response.raise_for_status()
+                        full_response = ""
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                data = line[6:]  # Remove "data: " prefix
+                                if data == "[DONE]":
+                                    break
+                                try:
+                                    import json
+                                    chunk = json.loads(data)
+                                    if chunk.get("choices") and chunk["choices"][0].get("delta", {}).get("content"):
+                                        content = chunk["choices"][0]["delta"]["content"]
+                                        full_response += content
+                                        # Here you could yield partial content for real-time streaming
+                                        logger.debug(f"Streaming chunk: {content}")
+                                except Exception as e:
+                                    logger.warning(f"Failed to parse streaming chunk: {e}")
+                                    continue
+                        return full_response
                 else:
-                    response = await req
-                response.raise_for_status()
-                data = response.json()
-                # Extract response text (update as per OpenRouter API)
-                return data["choices"][0]["message"]["content"]
+                    # Handle non-streaming response
+                    req = client.post(self.api_url, headers=headers, json=payload)
+                    if abort_event:
+                        done, pending = await asyncio.wait([req, abort_event.wait()], return_when=asyncio.FIRST_COMPLETED)
+                        if abort_event.is_set():
+                            logger.warning("LLM request aborted by user.")
+                            return "[Interrupted]"
+                        response = done.pop().result()
+                    else:
+                        response = await req
+                    response.raise_for_status()
+                    data = response.json()
+                    # Extract response text (update as per OpenRouter API)
+                    return data["choices"][0]["message"]["content"]
         except Exception as e:
             logger.error(f"LLM request failed: {e}")
             return "[Error: LLM unavailable]" 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Check, X, Mic, HelpCircle } from "lucide-react";
+import { Mic, HelpCircle } from "lucide-react";
 
 // API configuration
 const API_BASE_URL = "http://localhost:8000";
@@ -17,7 +17,7 @@ interface TalkTabProps {
 }
 
 interface VoiceBubbleProps {
-  state: "idle" | "listening" | "speaking" | "success" | "error";
+  state: "idle" | "listening" | "speaking";
   onTap?: () => void;
   onStartConversation?: () => void;
   showInterruptPrompt?: boolean;
@@ -29,12 +29,12 @@ function VoiceBubble({
   onStartConversation,
   showInterruptPrompt = false,
 }: VoiceBubbleProps) {
-
   const [isPressed, setIsPressed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const listeningGradient = "linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(59, 130, 246, 0.7) 50%, rgba(147, 197, 253, 0.6) 100%)";
+  const listeningGradient =
+    "linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(59, 130, 246, 0.7) 50%, rgba(147, 197, 253, 0.6) 100%)";
 
   useEffect(() => {
     // No longer need gradient cycling for listening state
@@ -58,18 +58,30 @@ function VoiceBubble({
     setIsPressed(false);
   };
 
-  const PulsatingCircle = ({ delay, size, opacity }: { delay: number; size: number; opacity: number }) => (
+  const PulsatingCircle = ({
+    delay,
+    size,
+    opacity,
+  }: {
+    delay: number;
+    size: number;
+    opacity: number;
+  }) => (
     <div
       style={{
         position: "absolute",
         borderRadius: "50%",
         width: size,
         height: size,
-        background: "linear-gradient(135deg, rgba(30, 64, 175, 0.15) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(147, 197, 253, 0.05) 100%)",
+        background:
+          "linear-gradient(135deg, rgba(30, 64, 175, 0.15) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(147, 197, 253, 0.05) 100%)",
         border: "1px solid rgba(59, 130, 246, 0.2)",
         backdropFilter: "blur(10px)",
         opacity: opacity,
-        animation: state === "listening" ? `pulse 5s ease-out infinite ${delay}s` : "none",
+        animation:
+          state === "listening"
+            ? `pulse 5s ease-out infinite ${delay}s`
+            : "none",
         transform: "translate(-50%, -50%)",
         left: "50%",
         top: "50%",
@@ -78,16 +90,19 @@ function VoiceBubble({
   );
 
   const SpeakingWaves = () => (
-    <div style={{
-      position: "absolute",
-      display: "flex",
-      gap: "8px",
-      alignItems: "center",
-      left: "50%",
-      top: "50%",
-      transform: "translate(-50%, -50%)",
-      filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))",
-    }}>
+    <div
+      style={{
+        position: "absolute",
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        filter:
+          "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))",
+      }}
+    >
       {[0, 1, 2, 3, 4].map((i) => (
         <div
           key={i}
@@ -103,44 +118,42 @@ function VoiceBubble({
     </div>
   );
 
-
-
   const getStateGradient = () => {
     switch (state) {
-      case "idle": 
+      case "idle":
         return "linear-gradient(135deg, rgba(71, 85, 105, 0.8) 0%, rgba(51, 65, 85, 0.7) 50%, rgba(30, 41, 59, 0.6) 100%)";
-      case "listening": 
+      case "listening":
         return listeningGradient;
-      case "speaking": 
+      case "speaking":
         return "linear-gradient(135deg, rgba(16, 185, 129, 0.8) 0%, rgba(5, 150, 105, 0.7) 50%, rgba(4, 120, 87, 0.6) 100%)";
-      case "success":
-        return "linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.7) 50%, rgba(21, 128, 61, 0.6) 100%)";
-      case "error":
-        return "linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.7) 50%, rgba(185, 28, 28, 0.6) 100%)";
-      default: 
+      default:
         return listeningGradient;
     }
   };
 
   const getBorderColor = () => {
     switch (state) {
-      case "idle": return "rgba(148, 163, 184, 0.7)";
-      case "listening": return "rgba(59, 130, 246, 0.8)";
-      case "speaking": return "rgba(16, 185, 129, 0.8)";
-      case "success": return "rgba(34, 197, 94, 0.8)";
-      case "error": return "rgba(239, 68, 68, 0.8)";
-      default: return "rgba(59, 130, 246, 0.7)";
+      case "idle":
+        return "rgba(148, 163, 184, 0.7)";
+      case "listening":
+        return "rgba(59, 130, 246, 0.8)";
+      case "speaking":
+        return "rgba(16, 185, 129, 0.8)";
+      default:
+        return "rgba(59, 130, 246, 0.7)";
     }
   };
 
   const getGlowColor = () => {
     switch (state) {
-      case "idle": return "rgba(148, 163, 184, 0.5)";
-      case "listening": return "rgba(59, 130, 246, 0.6)";
-      case "speaking": return "rgba(16, 185, 129, 0.6)";
-      case "success": return "rgba(34, 197, 94, 0.6)";
-      case "error": return "rgba(239, 68, 68, 0.6)";
-      default: return "rgba(59, 130, 246, 0.5)";
+      case "idle":
+        return "rgba(148, 163, 184, 0.5)";
+      case "listening":
+        return "rgba(59, 130, 246, 0.6)";
+      case "speaking":
+        return "rgba(16, 185, 129, 0.6)";
+      default:
+        return "rgba(59, 130, 246, 0.5)";
     }
   };
 
@@ -152,12 +165,14 @@ function VoiceBubble({
 
   const getStateAnimation = () => {
     switch (state) {
-      case "idle": return "idleBreathe 8s ease-in-out infinite";
-      case "listening": return "breathe 6s ease-in-out infinite";
-      case "speaking": return "speakingPulse 2s ease-in-out infinite";
-      case "success": return "successPulse 0.6s ease-out";
-      case "error": return "errorShake 0.6s ease-in-out";
-      default: return "none";
+      case "idle":
+        return "idleBreathe 8s ease-in-out infinite";
+      case "listening":
+        return "breathe 6s ease-in-out infinite";
+      case "speaking":
+        return "speakingPulse 2s ease-in-out infinite";
+      default:
+        return "none";
     }
   };
 
@@ -207,29 +222,7 @@ function VoiceBubble({
             }
           }
           
-          @keyframes successPulse {
-            0% {
-              transform: scale(1);
-            }
-            50% {
-              transform: scale(1.15);
-            }
-            100% {
-              transform: scale(1);
-            }
-          }
-          
-          @keyframes errorShake {
-            0%, 100% {
-              transform: translateX(0);
-            }
-            25% {
-              transform: translateX(-8px);
-            }
-            75% {
-              transform: translateX(8px);
-            }
-          }
+
           
           @keyframes speakingWave {
             0%, 100% {
@@ -299,23 +292,25 @@ function VoiceBubble({
           }
         `}
       </style>
-      
-      <div style={{ 
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        height: 500,
-        position: "relative",
-        marginBottom: 0,
-      }}>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 500,
+          position: "relative",
+          marginBottom: 0,
+        }}
+      >
         {/* Circle Container */}
         <div
-          style={{ 
-            position: "relative", 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
             width: 600,
             height: 400,
@@ -357,7 +352,7 @@ function VoiceBubble({
                 0 12px 30px rgba(0, 0, 0, 0.1),
                 inset 0 4px 0 rgba(255, 255, 255, 0.1),
                 inset 0 -4px 0 rgba(0, 0, 0, 0.1)
-                ${isHovered ? `, 0 0 100px ${getGlowColor()}` : ''}
+                ${isHovered ? `, 0 0 100px ${getGlowColor()}` : ""}
               `,
             }}
           />
@@ -373,8 +368,12 @@ function VoiceBubble({
               background: getStateGradient(),
               border: `2px solid ${getBorderColor()}`,
               backdropFilter: "blur(15px)",
-              animation: state === "listening" ? "breathe 5s ease-in-out infinite 1s" : 
-                        state === "speaking" ? "speakingPulse 1.5s ease-in-out infinite" : "none",
+              animation:
+                state === "listening"
+                  ? "breathe 5s ease-in-out infinite 1s"
+                  : state === "speaking"
+                  ? "speakingPulse 1.5s ease-in-out infinite"
+                  : "none",
               transition: "all 1s cubic-bezier(0.4, 0, 0.2, 1)",
               boxShadow: `
                 0 30px 90px rgba(0, 0, 0, 0.15),
@@ -395,7 +394,10 @@ function VoiceBubble({
               background: getStateGradient(),
               border: `2px solid ${getBorderColor()}`,
               backdropFilter: "blur(10px)",
-              animation: state === "listening" ? "breathe 4s ease-in-out infinite 2s" : "none",
+              animation:
+                state === "listening"
+                  ? "breathe 4s ease-in-out infinite 2s"
+                  : "none",
               transition: "all 1s cubic-bezier(0.4, 0, 0.2, 1)",
               boxShadow: `
                 0 20px 50px rgba(0, 0, 0, 0.12),
@@ -429,62 +431,46 @@ function VoiceBubble({
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = "rgba(255, 255, 255, 1)";
                 e.currentTarget.style.transform = "scale(1.1)";
-                e.currentTarget.style.textShadow = "0 0 16px rgba(59, 130, 246, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3)";
+                e.currentTarget.style.textShadow =
+                  "0 0 16px rgba(59, 130, 246, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = "rgba(255, 255, 255, 0.9)";
                 e.currentTarget.style.transform = "scale(1)";
-                e.currentTarget.style.textShadow = "0 2px 8px rgba(0, 0, 0, 0.3)";
+                e.currentTarget.style.textShadow =
+                  "0 2px 8px rgba(0, 0, 0, 0.3)";
               }}
             >
               Start
             </div>
           )}
-          
+
           {state === "listening" && (
-            <Mic 
-              size={56} 
-              style={{ 
+            <Mic
+              size={56}
+              style={{
                 color: "rgba(255, 255, 255, 0.9)",
-                filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))",
+                filter:
+                  "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))",
                 animation: "micPulsate 1.5s ease-in-out infinite",
                 position: "absolute",
-              }} 
+              }}
             />
           )}
           {state === "speaking" && <SpeakingWaves />}
-          {state === "success" && (
-            <Check 
-              size={56} 
-              style={{ 
-                color: "rgba(255, 255, 255, 0.9)",
-                filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))",
-                animation: "stateTransition 0.5s ease-out"
-              }} 
-            />
-          )}
-          {state === "error" && (
-            <X 
-              size={56} 
-              style={{ 
-                color: "rgba(255, 255, 255, 0.9)",
-                filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))",
-                animation: "stateTransition 0.5s ease-out"
-              }} 
-            />
-          )}
         </div>
 
-
         {state === "speaking" && showInterruptPrompt && (
-          <div style={{ 
-            fontSize: 16, 
-            color: "rgba(255, 255, 255, 0.6)",
-            animation: "textPulse 3s ease-in-out infinite",
-            textAlign: "center",
-            textShadow: "0 1px 4px rgba(0, 0, 0, 0.3)",
-            transition: "all 0.3s ease-in-out",
-          }}>
+          <div
+            style={{
+              fontSize: 16,
+              color: "rgba(255, 255, 255, 0.6)",
+              animation: "textPulse 3s ease-in-out infinite",
+              textAlign: "center",
+              textShadow: "0 1px 4px rgba(0, 0, 0, 0.3)",
+              transition: "all 0.3s ease-in-out",
+            }}
+          >
             Tap anywhere to interrupt
           </div>
         )}
@@ -509,12 +495,14 @@ function InstructionsPanel({ isOpen, onClose }: InstructionsPanelProps) {
         right: "20px",
         width: "320px",
         maxHeight: "400px",
-        background: "linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(59, 130, 246, 0.6) 50%, rgba(147, 197, 253, 0.4) 100%)",
+        background:
+          "linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(59, 130, 246, 0.6) 50%, rgba(147, 197, 253, 0.4) 100%)",
         backdropFilter: "blur(20px)",
         border: "1px solid rgba(147, 197, 253, 0.3)",
         borderRadius: "16px",
         padding: "20px",
-        boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2)",
+        boxShadow:
+          "0 20px 40px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2)",
         zIndex: 1000,
         animation: "slideIn 0.3s ease-out",
       }}
@@ -533,15 +521,24 @@ function InstructionsPanel({ isOpen, onClose }: InstructionsPanelProps) {
           }
         `}
       </style>
-      
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <h3 style={{ 
-          color: "rgba(255, 255, 255, 0.9)", 
-          fontSize: "18px", 
-          fontWeight: "600",
-          margin: 0,
-          textShadow: "0 2px 4px rgba(0, 0, 0, 0.3)"
-        }}>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "16px",
+        }}
+      >
+        <h3
+          style={{
+            color: "rgba(255, 255, 255, 0.9)",
+            fontSize: "18px",
+            fontWeight: "600",
+            margin: 0,
+            textShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
+          }}
+        >
           How to use GitBridge Talk
         </h3>
         <button
@@ -568,38 +565,62 @@ function InstructionsPanel({ isOpen, onClose }: InstructionsPanelProps) {
           ×
         </button>
       </div>
-      
-      <div style={{ 
-        color: "rgba(255, 255, 255, 0.8)", 
-        fontSize: "14px", 
-        lineHeight: "1.6",
-        textShadow: "0 1px 2px rgba(0, 0, 0, 0.3)"
-      }}>
+
+      <div
+        style={{
+          color: "rgba(255, 255, 255, 0.8)",
+          fontSize: "14px",
+          lineHeight: "1.6",
+          textShadow: "0 1px 2px rgba(0, 0, 0, 0.3)",
+        }}
+      >
         <div style={{ marginBottom: "12px" }}>
-          <strong style={{ color: "rgba(255, 255, 255, 0.9)" }}>🎯 Getting Started</strong>
+          <strong style={{ color: "rgba(255, 255, 255, 0.9)" }}>
+            🎯 Getting Started
+          </strong>
         </div>
         <ul style={{ paddingLeft: "16px", margin: "0 0 16px 0" }}>
-          <li style={{ marginBottom: "8px" }}>Click "Start" to begin talking with AI</li>
-          <li style={{ marginBottom: "8px" }}>Ask questions about your repository structure</li>
-          <li style={{ marginBottom: "8px" }}>Discuss code architecture and best practices</li>
+          <li style={{ marginBottom: "8px" }}>
+            Click "Start" to begin talking with AI
+          </li>
+          <li style={{ marginBottom: "8px" }}>
+            Ask questions about your repository structure
+          </li>
+          <li style={{ marginBottom: "8px" }}>
+            Discuss code architecture and best practices
+          </li>
         </ul>
-        
+
         <div style={{ marginBottom: "12px" }}>
-          <strong style={{ color: "rgba(255, 255, 255, 0.9)" }}>🎙️ Voice Interaction</strong>
+          <strong style={{ color: "rgba(255, 255, 255, 0.9)" }}>
+            🎙️ Voice Interaction
+          </strong>
         </div>
         <ul style={{ paddingLeft: "16px", margin: "0 0 16px 0" }}>
-          <li style={{ marginBottom: "8px" }}>Speak clearly when the bubble is listening</li>
-          <li style={{ marginBottom: "8px" }}>Tap anywhere to interrupt AI while speaking</li>
-          <li style={{ marginBottom: "8px" }}>If audio isn't caught, you'll be prompted to repeat</li>
+          <li style={{ marginBottom: "8px" }}>
+            Speak clearly when the bubble is listening
+          </li>
+          <li style={{ marginBottom: "8px" }}>
+            Tap anywhere to interrupt AI while speaking
+          </li>
+          <li style={{ marginBottom: "8px" }}>
+            If audio isn't caught, you'll be prompted to repeat
+          </li>
         </ul>
-        
+
         <div style={{ marginBottom: "12px" }}>
           <strong style={{ color: "rgba(255, 255, 255, 0.9)" }}>💡 Tips</strong>
         </div>
         <ul style={{ paddingLeft: "16px", margin: "0" }}>
-          <li style={{ marginBottom: "8px" }}>Use a quiet environment for best results</li>
-          <li style={{ marginBottom: "8px" }}>Ask specific questions about code patterns</li>
-          <li style={{ marginBottom: "8px" }}>AI can help explain complex architectures</li>
+          <li style={{ marginBottom: "8px" }}>
+            Use a quiet environment for best results
+          </li>
+          <li style={{ marginBottom: "8px" }}>
+            Ask specific questions about code patterns
+          </li>
+          <li style={{ marginBottom: "8px" }}>
+            AI can help explain complex architectures
+          </li>
         </ul>
       </div>
     </div>
@@ -607,24 +628,28 @@ function InstructionsPanel({ isOpen, onClose }: InstructionsPanelProps) {
 }
 
 export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
-  const [state, setState] = useState<"idle" | "listening" | "speaking" | "success" | "error">("idle");
+  const [state, setState] = useState<"idle" | "listening" | "speaking">("idle");
   const [showInstructions, setShowInstructions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(
+    null
+  );
+  const [conversationHistory, setConversationHistory] = useState<
+    Array<{ role: string; content: string }>
+  >([]);
   const [introductionPlayed, setIntroductionPlayed] = useState(false);
-  
+
   const voiceBubbleRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
 
-    // Auto-scroll to voice bubble when component mounts
+  // Auto-scroll to voice bubble when component mounts
   useEffect(() => {
     if (voiceBubbleRef.current) {
       voiceBubbleRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
+        behavior: "smooth",
+        block: "center",
       });
     }
   }, []);
@@ -637,40 +662,45 @@ export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
           setState("speaking");
           setIntroductionPlayed(true);
 
-          console.log('Playing introduction for:', repoAnalysis.repo_name);
+          console.log("Playing introduction for:", repoAnalysis.repo_name);
 
           // Get introduction audio from backend (session should now have context)
-          const response = await fetch(`${API_BASE_URL}/api/voice/introduction-audio`);
+          const response = await fetch(
+            `${API_BASE_URL}/api/voice/introduction-audio`
+          );
           if (!response.ok) {
-            throw new Error(`Failed to get introduction audio: ${response.status}`);
+            throw new Error(
+              `Failed to get introduction audio: ${response.status}`
+            );
           }
 
           const audioArrayBuffer = await response.arrayBuffer();
-          const audioBlob = new Blob([audioArrayBuffer], { type: 'audio/mpeg' });
+          const audioBlob = new Blob([audioArrayBuffer], {
+            type: "audio/mpeg",
+          });
           const audioUrl = URL.createObjectURL(audioBlob);
-          
+
           const audio = new Audio(audioUrl);
           setCurrentAudio(audio);
-          
+
           audio.onended = () => {
-            console.log('Introduction audio finished');
+            console.log("Introduction audio finished");
             setState("idle");
             URL.revokeObjectURL(audioUrl);
             setCurrentAudio(null);
           };
 
           audio.onerror = () => {
-            console.error('Error playing introduction audio');
+            console.error("Error playing introduction audio");
             setState("idle");
             URL.revokeObjectURL(audioUrl);
             setCurrentAudio(null);
           };
 
-          console.log('Starting introduction audio playback...');
+          console.log("Starting introduction audio playback...");
           await audio.play();
-
         } catch (error) {
-          console.error('Introduction playback error:', error);
+          console.error("Introduction playback error:", error);
           setState("idle");
         }
       }
@@ -696,8 +726,8 @@ Please provide helpful, accurate information about software development, coding 
 - How different parts of typical codebases work together
 - Suggestions for development or refactoring
 
-Keep your responses conversational and helpful, as if you're pair programming with the user.`
-        }
+Keep your responses conversational and helpful, as if you're pair programming with the user.`,
+        },
       ]);
     }
   }, [repoUrl]);
@@ -708,17 +738,20 @@ Keep your responses conversational and helpful, as if you're pair programming wi
       stopRecording();
       if (currentAudio) {
         currentAudio.pause();
-        currentAudio.src = '';
+        currentAudio.src = "";
       }
     };
   }, [currentAudio]);
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
       mediaRecorderRef.current.stop();
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setIsRecording(false);
@@ -730,20 +763,20 @@ Keep your responses conversational and helpful, as if you're pair programming wi
       setIsRecording(true);
       chunksRef.current = [];
 
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 16000
-        } 
+          sampleRate: 16000,
+        },
       });
-      
+
       streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: "audio/webm;codecs=opus",
       });
-      
+
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -753,118 +786,120 @@ Keep your responses conversational and helpful, as if you're pair programming wi
       };
 
       mediaRecorder.onstop = async () => {
-        const recordedBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const recordedBlob = new Blob(chunksRef.current, {
+          type: "audio/webm",
+        });
         await processVoiceInput(recordedBlob);
       };
 
       mediaRecorder.start(100); // Collect data every 100ms
-
     } catch (error) {
-      console.error('Error starting recording:', error);
-      setState("error");
+      console.error("Error starting recording:", error);
+      setState("idle");
       setTimeout(() => setState("idle"), 2000);
     }
   };
 
-     const processVoiceInput = async (recordedAudio: Blob) => {
-     try {
-             // Step 1: Speech-to-Text
+  const processVoiceInput = async (recordedAudio: Blob) => {
+    try {
+      // Step 1: Speech-to-Text
       const formData = new FormData();
-      formData.append('audio', recordedAudio, 'voice.webm');
+      formData.append("audio", recordedAudio, "voice.webm");
 
       const sttResponse = await fetch(`${API_BASE_URL}/api/voice/stt`, {
-        method: 'POST',
+        method: "POST",
         body: formData,
       });
 
-       if (!sttResponse.ok) {
-         throw new Error(`STT failed: ${sttResponse.status}`);
-       }
+      if (!sttResponse.ok) {
+        throw new Error(`STT failed: ${sttResponse.status}`);
+      }
 
-       const sttData = await sttResponse.json();
-       console.log('STT Response:', sttData);
+      const sttData = await sttResponse.json();
+      console.log("STT Response:", sttData);
 
-       if (!sttData.transcript || sttData.transcript.trim().length === 0) {
-         setState("error");
-         setTimeout(() => setState("idle"), 2000);
-         return;
-       }
+      if (!sttData.transcript || sttData.transcript.trim().length === 0) {
+        setState("idle");
+        setTimeout(() => setState("idle"), 2000);
+        return;
+      }
 
-       // Add user message to conversation history
-       const userMessage = { role: "user", content: sttData.transcript };
-       const updatedHistory = [...conversationHistory, userMessage];
+      // Add user message to conversation history
+      const userMessage = { role: "user", content: sttData.transcript };
+      const updatedHistory = [...conversationHistory, userMessage];
 
-             // Step 2: LLM Processing with conversation history
+      // Step 2: LLM Processing with conversation history
       const llmResponse = await fetch(`${API_BASE_URL}/api/voice/ask`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          transcript: sttData.transcript
+          transcript: sttData.transcript,
         }),
       });
 
-       if (!llmResponse.ok) {
-         throw new Error(`LLM failed: ${llmResponse.status}`);
-       }
+      if (!llmResponse.ok) {
+        throw new Error(`LLM failed: ${llmResponse.status}`);
+      }
 
-       const llmData = await llmResponse.json();
-       console.log('LLM Response:', llmData);
+      const llmData = await llmResponse.json();
+      console.log("LLM Response:", llmData);
 
-       // Add assistant response to conversation history
-       const assistantMessage = { role: "assistant", content: llmData.response };
-       setConversationHistory([...updatedHistory, assistantMessage]);
+      // Add assistant response to conversation history
+      const assistantMessage = { role: "assistant", content: llmData.response };
+      setConversationHistory([...updatedHistory, assistantMessage]);
 
-       // Step 3: Text-to-Speech
-       setState("speaking");
-       
-             const ttsResponse = await fetch(`${API_BASE_URL}/api/voice/tts`, {
-        method: 'POST',
+      // Step 3: Text-to-Speech
+      setState("speaking");
+
+      const ttsResponse = await fetch(`${API_BASE_URL}/api/voice/tts`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           text: llmData.response,
-          voice_id: "Matthew" // You can make this configurable
+          voice_id: "Matthew", // You can make this configurable
         }),
       });
 
-       if (!ttsResponse.ok) {
-         throw new Error(`TTS failed: ${ttsResponse.status}`);
-       }
+      if (!ttsResponse.ok) {
+        throw new Error(`TTS failed: ${ttsResponse.status}`);
+      }
 
-       // Step 4: Play Audio Response
-       const audioArrayBuffer = await ttsResponse.arrayBuffer();
-       const responseAudioBlob = new Blob([audioArrayBuffer], { type: 'audio/mpeg' });
-       const audioUrl = URL.createObjectURL(responseAudioBlob);
-       
-       const audio = new Audio(audioUrl);
-       setCurrentAudio(audio);
-       
-       audio.onended = () => {
-         setState("success");
-         setTimeout(() => setState("idle"), 1500);
-         URL.revokeObjectURL(audioUrl);
-         setCurrentAudio(null);
-       };
+      // Step 4: Play Audio Response
+      const audioArrayBuffer = await ttsResponse.arrayBuffer();
+      const responseAudioBlob = new Blob([audioArrayBuffer], {
+        type: "audio/mpeg",
+      });
+      const audioUrl = URL.createObjectURL(responseAudioBlob);
 
-       audio.onerror = () => {
-         console.error('Error playing audio');
-         setState("error");
-         setTimeout(() => setState("idle"), 2000);
-         URL.revokeObjectURL(audioUrl);
-         setCurrentAudio(null);
-       };
+      const audio = new Audio(audioUrl);
+      setCurrentAudio(audio);
 
-       await audio.play();
+      audio.onended = () => {
+        setState("idle");
+        setTimeout(() => setState("idle"), 1500);
+        URL.revokeObjectURL(audioUrl);
+        setCurrentAudio(null);
+      };
 
-     } catch (error) {
-       console.error('Voice pipeline error:', error);
-       setState("error");
-       setTimeout(() => setState("idle"), 2000);
-     }
-   };
+      audio.onerror = () => {
+        console.error("Error playing audio");
+        setState("idle");
+        setTimeout(() => setState("idle"), 2000);
+        URL.revokeObjectURL(audioUrl);
+        setCurrentAudio(null);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error("Voice pipeline error:", error);
+      setState("idle");
+      setTimeout(() => setState("idle"), 2000);
+    }
+  };
 
   const handleStartConversation = async () => {
     await startRecording();
@@ -879,7 +914,7 @@ Keep your responses conversational and helpful, as if you're pair programming wi
       currentAudio.pause();
       setCurrentAudio(null);
       startRecording();
-    } else if (state === "error") {
+    } else if (state === "idle") {
       // Retry after error
       setState("idle");
     }
@@ -887,68 +922,26 @@ Keep your responses conversational and helpful, as if you're pair programming wi
   };
 
   return (
-    <div 
+    <div
       ref={voiceBubbleRef}
-      style={{ 
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         justifyContent: "flex-start",
         minHeight: "90vh",
         width: "100%",
         position: "relative",
         padding: "20px",
-        paddingTop: "10vh"
-      }}>
-            <VoiceBubble
+        paddingTop: "10vh",
+      }}
+    >
+      <VoiceBubble
         state={state}
         showInterruptPrompt={state === "speaking" && introductionPlayed}
         onTap={handleVoiceBubbleTap}
         onStartConversation={handleStartConversation}
       />
-
-            {/* Repository Info */}
-      <div style={{
-        fontSize: "14px",
-        color: "rgba(255, 255, 255, 0.6)",
-        textAlign: "center",
-        marginTop: "10px",
-        marginBottom: "10px",
-        textShadow: "0 1px 2px rgba(0, 0, 0, 0.3)",
-        maxWidth: "500px"
-      }}>
-        🗂️ Ready to discuss: <strong>
-          {repoAnalysis?.repo_name || repoUrl.split('/').slice(-2).join('/')}
-        </strong>
-        {repoAnalysis?.repo_description && (
-          <div style={{ 
-            fontSize: "12px", 
-            marginTop: "4px", 
-            fontStyle: "italic",
-            color: "rgba(255, 255, 255, 0.5)"
-          }}>
-            {repoAnalysis.repo_description}
-          </div>
-        )}
-      </div>
-
-            {/* Status Text */}
-      <div style={{
-        fontSize: "18px",
-        color: "rgba(255, 255, 255, 0.8)",
-        textAlign: "center",
-        marginTop: "10px",
-        textShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
-        fontWeight: "500"
-      }}>
-        {state === "idle" && (introductionPlayed ? "Click Start to begin voice conversation" : "Ready to start conversation")}
-        {state === "listening" && "Listening... Click to stop and process"}
-        {state === "speaking" && (introductionPlayed ? "AI is speaking... Tap to interrupt" : "🎤 AI introducing the repository...")}
-        {state === "success" && "✅ Conversation complete!"}
-        {state === "error" && "❌ Error occurred. Tap to try again"}
-      </div>
-
-
 
       {/* Instructions Button */}
       <button
@@ -960,7 +953,8 @@ Keep your responses conversational and helpful, as if you're pair programming wi
           width: "50px",
           height: "50px",
           borderRadius: "50%",
-          background: "linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(59, 130, 246, 0.6) 100%)",
+          background:
+            "linear-gradient(135deg, rgba(30, 64, 175, 0.8) 0%, rgba(59, 130, 246, 0.6) 100%)",
           border: "1px solid rgba(147, 197, 253, 0.3)",
           backdropFilter: "blur(20px)",
           color: "rgba(255, 255, 255, 0.9)",
@@ -969,26 +963,29 @@ Keep your responses conversational and helpful, as if you're pair programming wi
           alignItems: "center",
           justifyContent: "center",
           transition: "all 0.3s ease",
-          boxShadow: "0 8px 20px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)",
+          boxShadow:
+            "0 8px 20px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)",
           zIndex: 999,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "scale(1.1)";
-          e.currentTarget.style.boxShadow = "0 12px 30px rgba(0, 0, 0, 0.4), 0 6px 15px rgba(0, 0, 0, 0.3)";
+          e.currentTarget.style.boxShadow =
+            "0 12px 30px rgba(0, 0, 0, 0.4), 0 6px 15px rgba(0, 0, 0, 0.3)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = "scale(1)";
-          e.currentTarget.style.boxShadow = "0 8px 20px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)";
+          e.currentTarget.style.boxShadow =
+            "0 8px 20px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)";
         }}
       >
         <HelpCircle size={20} />
       </button>
 
       {/* Instructions Panel */}
-      <InstructionsPanel 
-        isOpen={showInstructions} 
-        onClose={() => setShowInstructions(false)} 
+      <InstructionsPanel
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
       />
     </div>
   );
-} 
+}
