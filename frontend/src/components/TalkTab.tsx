@@ -789,7 +789,17 @@ Keep your responses conversational and helpful, as if you're pair programming wi
         const recordedBlob = new Blob(chunksRef.current, {
           type: "audio/webm",
         });
-        await processVoiceInput(recordedBlob);
+        
+        console.log("Recording stopped, chunks:", chunksRef.current.length);
+        console.log("Total audio size:", recordedBlob.size, "bytes");
+        
+        // Only process if we have meaningful audio
+        if (recordedBlob.size > 1000 && chunksRef.current.length > 0) {
+          await processVoiceInput(recordedBlob);
+        } else {
+          console.warn("Recording too short or empty, skipping processing");
+          setState("idle");
+        }
       };
 
       mediaRecorder.start(100); // Collect data every 100ms
@@ -802,17 +812,32 @@ Keep your responses conversational and helpful, as if you're pair programming wi
 
   const processVoiceInput = async (recordedAudio: Blob) => {
     try {
+      // Validate audio blob
+      console.log("Audio blob size:", recordedAudio.size, "bytes");
+      console.log("Audio blob type:", recordedAudio.type);
+      
+      if (recordedAudio.size < 1000) {
+        console.warn("Audio file too small, likely no speech detected");
+        setState("idle");
+        return;
+      }
+
       // Step 1: Speech-to-Text
       const formData = new FormData();
       formData.append("audio", recordedAudio, "voice.webm");
 
+      console.log("Sending audio to STT endpoint...");
       const sttResponse = await fetch(`${API_BASE_URL}/api/voice/stt`, {
         method: "POST",
         body: formData,
       });
 
+      console.log("STT response status:", sttResponse.status);
+      
       if (!sttResponse.ok) {
-        throw new Error(`STT failed: ${sttResponse.status}`);
+        const errorText = await sttResponse.text();
+        console.error("STT error response:", errorText);
+        throw new Error(`STT failed: ${sttResponse.status} - ${errorText}`);
       }
 
       const sttData = await sttResponse.json();

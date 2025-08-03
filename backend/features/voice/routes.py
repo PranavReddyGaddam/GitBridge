@@ -94,7 +94,8 @@ async def stt_endpoint(request: Request, audio: UploadFile = File(...)):
                 
             except Exception as e:
                 logger.error(f"Audio conversion failed: {e}")
-                raise HTTPException(status_code=400, detail=f"Unsupported audio format: {e}")
+                logger.error(f"Audio file details: filename={audio.filename}, content_type={audio.content_type}, size={len(audio_bytes)}")
+                raise HTTPException(status_code=400, detail=f"Audio conversion failed: {str(e)}")
             
             # Now transcribe the converted WAV file
             transcript_segments = await stt_service.transcribe(tmp_output_path)
