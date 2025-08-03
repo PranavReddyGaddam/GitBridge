@@ -313,6 +313,22 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
           ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
         } catch (error) {
           console.error("Mermaid render error:", error);
+          
+          // Show a fallback message
+          if (ref.current) {
+            ref.current.innerHTML = `
+              <div style="text-align: center; padding: 2rem; color: #666;">
+                <h3>Diagram Rendering Error</h3>
+                <p>The diagram could not be rendered. This might be due to:</p>
+                <ul style="text-align: left; display: inline-block;">
+                  <li>Complex diagram structure</li>
+                  <li>Unsupported Mermaid syntax</li>
+                  <li>Browser compatibility issues</li>
+                </ul>
+                <p>Please try generating a new diagram or contact support.</p>
+              </div>
+            `;
+          }
         }
       }
     };

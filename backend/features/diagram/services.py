@@ -93,10 +93,33 @@ class LLMService:
     @staticmethod
     def remove_unsupported_mermaid_syntax(mermaid_code: str) -> str:
         """
-        Remove unsupported Mermaid syntax, such as 'style' lines, from the diagram code.
+        Remove unsupported Mermaid syntax and problematic references from the diagram code.
         """
         lines = mermaid_code.splitlines()
-        filtered = [line for line in lines if not line.strip().startswith('style ')]
+        filtered = []
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Remove style lines
+            if line.startswith('style '):
+                continue
+                
+            # Remove any dynamic import references
+            if 'import(' in line or 'require(' in line:
+                continue
+                
+            # Remove any module references that might cause issues
+            if 'module:' in line or 'dynamic:' in line:
+                continue
+                
+            # Remove any problematic click events that reference non-existent files
+            if line.startswith('click ') and ('flowDiagram' in line or '.js' in line):
+                continue
+                
+            # Keep the line if it passes all filters
+            filtered.append(line)
+        
         return '\n'.join(filtered)
 
     @staticmethod
@@ -389,7 +412,7 @@ You must include click events for components of the diagram that have been speci
   - If you believe the component references a specific file, include the file path.
 - Make sure to include the full path to the directory or file exactly as specified in the component mapping.
 - It is very important that you do this for as many files as possible. The more the better.
-
+- IMPORTANT: Only use simple file paths, avoid any JavaScript files (.js), TypeScript files (.ts), or any files that might cause dynamic imports.
 - IMPORTANT: THESE PATHS ARE FOR CLICK EVENTS ONLY, these paths should not be included in the diagram's node's names. Only for the click events. Paths should not be seen by the user.
 
 Your output should be valid Mermaid.js code that can be rendered into a diagram.
