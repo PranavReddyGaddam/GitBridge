@@ -2,13 +2,21 @@ import asyncio
 from typing import Dict, Any, Optional, AsyncGenerator
 from datetime import datetime
 import tempfile
+import sys
+from pathlib import Path
 
-from backend.features.podcast.services_llm import PodcastLLMService
-from backend.features.podcast.tts import TTSService
-from backend.features.podcast.streaming_tts import StreamingTTSService
-from backend.services.github import GitHubService
-from backend.services.hybrid_storage import HybridStorageService
-from backend.features.diagram.models import (
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from features.podcast.services_llm import PodcastLLMService
+from features.podcast.tts import TTSService
+from features.podcast.streaming_tts import StreamingTTSService
+from services.github import GitHubService
+from services.hybrid_storage import HybridStorageService
+from features.diagram.models import (
     GeneratePodcastRequest, GeneratePodcastResponse, PodcastCacheEntry,
     PodcastFiles, PodcastMetadata, VoiceSettings, StreamingPodcastResponse
 )

@@ -1,12 +1,20 @@
 import os
 import json
 import hashlib
-import boto3
+import sys
 from pathlib import Path
-from typing import Dict, Optional, List, BinaryIO
+from typing import Dict, Optional, List, Union, BinaryIO
 from datetime import datetime, timedelta
+import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
-from backend.features.diagram.models import PodcastCacheEntry, VoiceSettings, PodcastFiles, PodcastMetadata
+
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from features.diagram.models import PodcastCacheEntry, VoiceSettings, PodcastFiles, PodcastMetadata
 
 class S3StorageService:
     """S3 storage service for podcast files and metadata with CDN support."""

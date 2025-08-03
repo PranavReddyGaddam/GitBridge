@@ -8,8 +8,9 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Add the current directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add the current directory to Python path for relative imports
+current_dir = Path(__file__).parent
+sys.path.insert(0, str(current_dir))
 
 # Load environment variables from the backend directory
 backend_dir = Path(__file__).parent
@@ -33,9 +34,14 @@ def main():
     print("🚀 Starting GitBridge backend...")
     print("📖 API Documentation: http://localhost:8000/docs")
     print("🔍 Health Check: http://localhost:8000/health")
+    print(f"📁 Working directory: {os.getcwd()}")
+    
+    # Import the app directly from the main module
+    import main
+    app = main.app
     
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
         port=8000,
         reload=False,  # Disabled to fix Windows multiprocessing issue

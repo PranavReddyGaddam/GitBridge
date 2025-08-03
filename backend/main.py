@@ -1,13 +1,20 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from backend.features.diagram.routes import router as diagram_router
-from backend.routers.generate import router as generate_router
-from backend.features.podcast.routes import router as podcast_router
-from backend.features.voice.routes import router as voice_router
+
+# Add the current directory to Python path for relative imports
+current_dir = Path(__file__).parent
+sys.path.insert(0, str(current_dir))
+
+# Import routers directly from their modules
+from features.diagram.routes import router as diagram_router
+from routers.generate import router as generate_router
+from features.podcast.routes import router as podcast_router
+from features.voice.routes import router as voice_router
 
 # Load environment variables from the backend directory
 backend_dir = Path(__file__).parent

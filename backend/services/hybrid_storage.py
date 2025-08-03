@@ -1,10 +1,18 @@
 import os
 import json
 import hashlib
+import sys
 from pathlib import Path
 from typing import Dict, Optional, List, Union
 from datetime import datetime
-from backend.features.diagram.models import PodcastCacheEntry, VoiceSettings, PodcastFiles, PodcastMetadata
+
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from features.diagram.models import PodcastCacheEntry, VoiceSettings, PodcastFiles, PodcastMetadata
 
 from .storage import FileStorageService
 from .s3_storage import S3StorageService

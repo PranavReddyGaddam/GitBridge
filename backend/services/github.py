@@ -1,9 +1,18 @@
 import os
+import sys
 from typing import Optional, Dict, Any, List
 from github import Github
 from github.Repository import Repository
 from github.ContentFile import ContentFile
-from backend.utils.tree_formatter import format_file_tree, clean_tree_output
+from pathlib import Path
+
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from utils.tree_formatter import format_file_tree, clean_tree_output
 
 class GitHubService:
     def __init__(self):

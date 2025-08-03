@@ -67,3 +67,4 @@ htmlcov/
 
 #podcast files
 podcast_cache/
+podcast_cache_test/

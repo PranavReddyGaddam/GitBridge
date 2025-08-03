@@ -2,9 +2,18 @@ import os
 import requests
 import json
 import re
+import sys
 from typing import Dict, Any, Optional, List
-from backend.features.diagram.models import LLMPromptRequest, LLMPromptResponse
-from backend.services.exceptions import (
+from pathlib import Path
+
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from features.diagram.models import LLMPromptRequest, LLMPromptResponse
+from services.exceptions import (
     RateLimitExceededException, 
     AuthenticationException, 
     APITimeoutException,

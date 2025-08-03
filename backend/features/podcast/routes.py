@@ -3,13 +3,21 @@ from fastapi.responses import StreamingResponse, FileResponse
 from typing import List
 import json
 import os
+import sys
+from pathlib import Path
 
-from backend.features.diagram.models import (
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from features.diagram.models import (
     GeneratePodcastRequest, GeneratePodcastResponse, 
     ErrorResponse, PodcastCacheEntry, StreamingPodcastResponse
 )
-from backend.features.podcast.services import PodcastService
-from backend.services.exceptions import (
+from features.podcast.services import PodcastService
+from services.exceptions import (
     RateLimitExceededException,
     AuthenticationException,
     APITimeoutException,
@@ -239,7 +247,7 @@ async def get_podcast_script(cache_key: str):
         script_path = cache_entry.files.script_file_path
         if script_path.startswith('s3://'):
             # Fetch from S3
-            from backend.services.s3_storage import S3StorageService
+            from services.s3_storage import S3StorageService
             s3_service = S3StorageService()
             bucket = s3_service.bucket_name
             s3_key = script_path.replace(f's3://{bucket}/', '')

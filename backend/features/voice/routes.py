@@ -4,8 +4,18 @@ from .stt import SpeechToTextService
 from .llm import LLMService
 from .tts import TTSService
 from .state import VoiceSessionManager
-from backend.services.github import GitHubService
-from backend.features.podcast.services_llm import PodcastLLMService
+import sys
+from pathlib import Path
+
+# Add the backend directory to the path for imports
+backend_dir = Path(__file__).parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using direct module paths
+from services.github import GitHubService
+from features.podcast.services_llm import PodcastLLMService
+
 import io
 import logging
 import os
