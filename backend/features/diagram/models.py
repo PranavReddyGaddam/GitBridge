@@ -101,4 +101,7 @@ class StreamingPodcastResponse(BaseModel):
     progress: float
     status: str  # "generating", "segment_ready", "complete", "error"
     message: Optional[str] = None
-    duration_ms: Optional[int] = None 
+    duration_ms: Optional[int] = None
+    cache_key: Optional[str] = None
+    audio_url: Optional[str] = None
+    script_url: Optional[str] = None 

@@ -45,7 +45,7 @@ class TTSService:
     def synthesize_speech(
         self,
         text: str,
-        voice_id: str = "Matthew",
+        voice_id: str = "Joanna",
         language_code: str = "en-US",
         engine: str = "neural",
         text_type: str = "text",
@@ -116,7 +116,7 @@ class TTSService:
         if not self.polly:
             # Return mock voices when AWS is not available
             return [
-                {"VoiceId": "Matthew", "Name": "Matthew (Mock)", "Gender": "Male", "Engine": ["standard"], "LanguageCode": "en-US"},
+                {"VoiceId": "Joanna", "Name": "Joanna (Mock)", "Gender": "Female", "Engine": ["standard"], "LanguageCode": "en-US"},
                 {"VoiceId": "Joanna", "Name": "Joanna (Mock)", "Gender": "Female", "Engine": ["standard"], "LanguageCode": "en-US"},
             ]
         

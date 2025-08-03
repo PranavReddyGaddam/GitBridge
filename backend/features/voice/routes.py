@@ -118,8 +118,42 @@ async def ask_endpoint(request: Request, body: dict):
     if not transcript:
         raise HTTPException(status_code=400, detail="Missing transcript")
     session.add_message("user", transcript)
-    # Prepare context with full history
+    
+    # Get repository context from session
+    repo_context = session.get_context()
+    repo_name = repo_context.get('repo_name', '')
+    repo_description = repo_context.get('repo_description', '')
+    analysis_summary = repo_context.get('analysis_summary', '')
+    
+    # Prepare context with full history and repository information
     context = {"messages": session.get_history()}
+    
+    # If we have repository context, ensure it's included in the system prompt
+    if repo_name and analysis_summary:
+        # Create a repository-aware system prompt
+        repo_system_prompt = f"""You are GitBridge Voice, a friendly, conversational AI voice assistant for developers.
+
+CRITICAL RESPONSE FORMAT REQUIREMENTS:
+- NEVER use emojis, bullet points, or any visual formatting
+- Use complete sentences that flow together naturally
+- Write in a conversational style optimized for text-to-speech
+- Use contractions and natural transitions like 'you see', 'now', 'so', 'well'
+- Keep responses concise but complete - aim for 2-4 sentences that tell a complete thought
+- Use relatable analogies and metaphors when explaining technical concepts
+- Break down complex topics into digestible explanations that flow naturally
+
+You are currently discussing the GitHub repository: {repo_name}
+
+Repository Description: {repo_description}
+
+Repository Analysis: {analysis_summary}
+
+You should provide helpful, accurate information about this specific repository. You can discuss the repository's architecture, structure, and organization, the technologies and frameworks used, code patterns and best practices evident in the codebase, potential improvements or optimizations, how different components work together, development workflow and project setup, and specific files and their purposes.
+
+Always reference specific parts of the codebase when relevant, and maintain a warm, helpful tone as if you're pair programming with the user. Remember to format your responses for optimal text-to-speech delivery."""
+        
+        context["system"] = repo_system_prompt
+    
     try:
         response = await llm_service.ask(transcript, context=context)
         session.add_message("assistant", response)
@@ -135,7 +169,7 @@ async def tts_download_endpoint(request: Request, body: dict):
     Better compatibility with FastAPI docs interface.
     """
     text = body.get("text")
-    voice_id = body.get("voice_id", "Matthew")
+    voice_id = body.get("voice_id", "Joanna")
     language_code = body.get("language_code", "en-US")
     use_cache = body.get("use_cache", False)
     if not text:
@@ -177,7 +211,7 @@ async def tts_download_endpoint(request: Request, body: dict):
 @router.post('/tts')
 async def tts_endpoint(request: Request, body: dict):
     text = body.get("text")
-    voice_id = body.get("voice_id", "Matthew")
+    voice_id = body.get("voice_id", "Joanna")
     language_code = body.get("language_code", "en-US")
     use_cache = body.get("use_cache", False)
     if not text:
@@ -267,6 +301,15 @@ async def analyze_repo_for_voice(request: Request, body: dict):
         # Step 3: Create system context for the voice AI
         system_context = f"""You are an AI assistant with deep knowledge of the GitHub repository: {repo_data["repo_name"]}
 
+CRITICAL RESPONSE FORMAT REQUIREMENTS:
+- NEVER use emojis, bullet points, or any visual formatting
+- Use complete sentences that flow together naturally
+- Write in a conversational style optimized for text-to-speech
+- Use contractions and natural transitions like 'you see', 'now', 'so', 'well'
+- Keep responses concise but complete - aim for 2-4 sentences that tell a complete thought
+- Use relatable analogies and metaphors when explaining technical concepts
+- Break down complex topics into digestible explanations that flow naturally
+
 Repository Description: {repo_data.get("repo_description", "No description available")}
 
 REPOSITORY ANALYSIS:
@@ -278,16 +321,9 @@ FILE STRUCTURE:
 README CONTENT:
 {repo_data.get("readme_content", "No README available")}
 
-You should provide helpful, accurate information about this specific repository. You can discuss:
-- The repository's architecture, structure, and organization
-- Technologies, frameworks, and dependencies used
-- Code patterns and best practices evident in the codebase
-- Potential improvements or optimizations
-- How different components work together
-- Development workflow and project setup
-- Specific files and their purposes
+You should provide helpful, accurate information about this specific repository. You can discuss the repository's architecture, structure, and organization, the technologies and frameworks used, code patterns and best practices evident in the codebase, potential improvements or optimizations, how different components work together, development workflow and project setup, and specific files and their purposes.
 
-Keep your responses conversational and helpful as if you're pair programming with the user. Always reference specific parts of the codebase when relevant."""
+Always reference specific parts of the codebase when relevant, and maintain a warm, helpful tone as if you're pair programming with the user. Remember to format your responses for optimal text-to-speech delivery."""
 
         # Step 4: Initialize session with rich context
         session.clear_history()  # Clear any existing history
@@ -295,7 +331,7 @@ Keep your responses conversational and helpful as if you're pair programming wit
         
         # Step 5: Generate personalized introduction
         repo_name = repo_data["repo_name"]
-        introduction_text = f"""Hello! I'm your AI assistant, and I'm excited to discuss the {repo_name} repository with you today. 
+        introduction_text = f"""Hello! I'm Juno, and I'm excited to discuss the {repo_name} repository with you today. 
 
 I've analyzed the codebase and I'm ready to help you understand its architecture, explore the code structure, discuss best practices, or answer any questions you might have about this project. 
 
@@ -313,7 +349,7 @@ What would you like to know about {repo_name}?"""
         logger.info("Generating introduction audio...")
         introduction_audio = tts_service.synthesize_speech(
             text=introduction_text,
-            voice_id="Matthew",
+            voice_id="Joanna",
             language_code="en-US",
             use_cache=False
         )
@@ -358,7 +394,7 @@ async def get_introduction_audio(request: Request):
         
         audio_bytes = tts_service.synthesize_speech(
             text=intro_text,
-            voice_id="Matthew",
+            voice_id="Joanna",
             language_code="en-US",
             use_cache=False
         )

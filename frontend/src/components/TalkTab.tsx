@@ -858,10 +858,10 @@ Keep your responses conversational and helpful, as if you're pair programming wi
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          text: llmData.response,
-          voice_id: "Matthew", // You can make this configurable
-        }),
+                  body: JSON.stringify({
+            text: llmData.response,
+            voice_id: "Joanna", // You can make this configurable
+          }),
       });
 
       if (!ttsResponse.ok) {

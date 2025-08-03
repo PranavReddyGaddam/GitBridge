@@ -195,7 +195,10 @@ class PodcastService:
                     audio_chunk_url=cached_entry.files.audio_file_path,
                     progress=1.0,
                     status="complete",
-                    message="Retrieved from cache"
+                    message="Retrieved from cache",
+                    cache_key=cache_key,
+                    audio_url=cached_entry.files.audio_file_path,
+                    script_url=cached_entry.files.script_file_path
                 )
                 return
         
@@ -319,7 +322,10 @@ class PodcastService:
                 audio_chunk_url=files.audio_file_path,
                 progress=1.0,
                 status="complete",
-                message="Podcast generation complete!"
+                message="Podcast generation complete!",
+                cache_key=cache_key,
+                audio_url=files.audio_file_path,
+                script_url=files.script_file_path
             )
             
         except Exception as e:

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Navbar from './components/Navbar'
 import PodcastPlayer from './components/PodcastPlayer'
 import Threads from './components/threads'
@@ -11,6 +11,8 @@ import { PodcastAPIService, type GeneratePodcastResponse, type StreamingPodcastR
 import VoiceCustomizationModal from './components/VoiceCustomizationModal'
 // AudioSegment type is already defined in audioSegments state below
 import { LoaderOne } from "@/components/ui/loader";
+import { formatDuration } from './lib/utils'
+
 
 
 type TabProps = {
@@ -242,14 +244,27 @@ function App() {
     introduction_text: string;
     introduction_audio_size: number;
   } | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
-  // Parse captions when duration is set
-  useEffect(() => {
-    if (duration > 0) {
-      setCaptions(parseCaptions(captionsRaw, duration));
-    }
-  }, [duration]);
+
+
+
+     // Parse captions when duration is set
+   useEffect(() => {
+     if (duration > 0) {
+       setCaptions(parseCaptions(captionsRaw, duration));
+     }
+   }, [duration]);
+
+   // Debug generatedPodcast state changes
+   useEffect(() => {
+     if (generatedPodcast) {
+       console.log('Generated podcast state updated:', {
+         cache_key: generatedPodcast.cache_key,
+         audio_url: generatedPodcast.audio_url,
+         metadata: generatedPodcast.metadata
+       });
+     }
+   }, [generatedPodcast]);
 
   // Ref for podcast card
   const podcastCardRef = useRef<HTMLDivElement>(null);
@@ -471,50 +486,107 @@ function App() {
 
         console.log('No cached podcast found, generating new one...');
         
-        const eventSource = new EventSource(`${API_BASE_URL}/api/generate-podcast?repo_url=${encodeURIComponent(repoUrl)}&duration=5&host_voice_id=${encodeURIComponent(voiceSettings.host_voice_id)}&expert_voice_id=${encodeURIComponent(voiceSettings.expert_voice_id)}&stability=${voiceSettings.stability}&similarity_boost=${voiceSettings.similarity_boost}&stream=true`);
+        // Create the request for the streaming endpoint
+        const requestBody = {
+          repo_url: repoUrl,
+          duration_minutes: 5,
+          voice_settings: {
+            host_voice_id: voiceSettings.host_voice_id,
+            expert_voice_id: voiceSettings.expert_voice_id,
+            stability: voiceSettings.stability,
+            similarity_boost: voiceSettings.similarity_boost,
+            style: voiceSettings.style,
+            use_speaker_boost: voiceSettings.use_speaker_boost
+          }
+        };
         
         // Reset states
         setStreamingProgress(null);
         setAudioSegments([]);
         setStreamingAudioEnabled(true);
         
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('Received SSE data:', data);
+        try {
+          // Use the proper streaming API service
+          for await (const update of PodcastAPIService.generatePodcastStreaming(requestBody)) {
+            console.log('Received streaming update:', update);
             
-            if (data.type === 'progress') {
-              setStreamingProgress(data);
-            } else if (data.type === 'audio_segment') {
+            if (update.status === 'processing') {
+              setStreamingProgress(update);
+            } else if (update.status === 'segment_ready' && update.segment_url) {
               if (streamingAudioEnabled) {
-                setAudioSegments(prev => [...prev, data.segment]);
+                setAudioSegments(prev => [...prev, {
+                  index: update.segment_index || 0,
+                  url: update.segment_url!,
+                  duration_ms: update.duration_ms || 0,
+                  loaded: true,
+                  played: false
+                }]);
               }
-            } else if (data.type === 'complete') {
-              console.log('Podcast generation complete:', data.podcast);
-              setGeneratedPodcast(data.podcast);
+            } else if (update.status === 'complete') {
+              console.log('Podcast generation complete:', update);
+              console.log('Complete update keys:', Object.keys(update));
+              console.log('cache_key value:', update.cache_key);
+              console.log('cache_key type:', typeof update.cache_key);
+              
+                             // Try to extract cache_key from audio URL if it's missing
+               let finalCacheKey = update.cache_key;
+               // Use type assertion to access potential additional fields
+               const updateAny = update as StreamingPodcastResponse & { audio_chunk_url?: string };
+               if (!finalCacheKey && updateAny.audio_chunk_url && typeof updateAny.audio_chunk_url === 'string') {
+                 // Extract cache_key from S3 URL: s3://git-bridge/audio/podcast_{cache_key}_{timestamp}.wav
+                 const urlMatch = updateAny.audio_chunk_url.match(/podcast_([a-f0-9]+)_\d{8}_\d{6}\.wav$/);
+                 if (urlMatch) {
+                   finalCacheKey = urlMatch[1];
+                   console.log('Extracted cache_key from audio URL:', finalCacheKey);
+                 }
+               }
+              
+              // Check if we have the required cache_key
+              if (!finalCacheKey) {
+                console.error('Missing cache_key in complete update:', update);
+                console.error('All update fields:', JSON.stringify(update, null, 2));
+                throw new Error('Podcast generation completed but cache_key is missing');
+              }
+              
+                             // Create a GeneratePodcastResponse from the streaming data
+               const podcastResponse: GeneratePodcastResponse = {
+                 success: true,
+                 cache_key: finalCacheKey!,
+                files: { 
+                  audio_file_path: update.audio_url || '', 
+                  script_file_path: update.script_url || '', 
+                  metadata_file_path: '' 
+                },
+                metadata: {
+                  repo_name: repoUrl.split('/').pop() || 'Unknown',
+                  repo_url: repoUrl,
+                  duration_minutes: 5,
+                  total_words: 0,
+                  estimated_cost: 0,
+                  generation_timestamp: new Date().toISOString(),
+                  voice_settings: voiceSettings
+                },
+                generation_time_seconds: 0,
+                audio_url: update.audio_url || '',
+                script_url: update.script_url || ''
+              };
+              
+              console.log('Setting generated podcast with cache_key:', update.cache_key);
+              setGeneratedPodcast(podcastResponse);
               setPodcastGenerated(true);
               setLastGeneratedUrl(repoUrl);
-              eventSource.close();
-              
-              // Refresh cached podcasts to include the new one
-              loadCachedPodcasts();
-            } else if (data.type === 'error') {
-              console.error('Podcast generation error:', data.error);
-              throw new Error(data.error);
+              break;
+            } else if (update.status === 'error') {
+              throw new Error(update.message || 'Podcast generation failed');
             }
-          } catch (parseError) {
-            console.error('Error parsing SSE data:', parseError);
           }
-        };
+        } catch (error) {
+          console.error('Podcast generation error:', error);
+          throw error;
+        }
         
-        eventSource.onerror = (event) => {
-          console.error('EventSource error:', event);
-          eventSource.close();
-          throw new Error('Connection lost during podcast generation');
-        };
-        
-        // Store the EventSource reference for cleanup
-        eventSourceRef.current = eventSource;
+        // Refresh cached podcasts to include the new one
+        loadCachedPodcasts();
       }
     } catch (error) {
       console.error('Error generating content:', error);
@@ -533,20 +605,20 @@ function App() {
     // setPodcastGenerated(false);
   };
 
-  // Load cached podcasts
-  const loadCachedPodcasts = async () => {
-    if (loadingCachedPodcasts) return;
-    
-    setLoadingCachedPodcasts(true);
-    try {
-      const cached = await PodcastAPIService.getCachedPodcasts(20);
-      setCachedPodcasts(cached);
-    } catch (error) {
-      console.error('Failed to load cached podcasts:', error);
-    } finally {
-      setLoadingCachedPodcasts(false);
-    }
-  };
+     // Load cached podcasts
+   const loadCachedPodcasts = useCallback(async () => {
+     if (loadingCachedPodcasts) return;
+     
+     setLoadingCachedPodcasts(true);
+     try {
+       const cached = await PodcastAPIService.getCachedPodcasts(20);
+       setCachedPodcasts(cached);
+     } catch (error) {
+       console.error('Failed to load cached podcasts:', error);
+     } finally {
+       setLoadingCachedPodcasts(false);
+     }
+   }, [loadingCachedPodcasts]);
 
   // Load a cached podcast
   const loadCachedPodcast = async (cacheEntry: PodcastCacheEntry) => {
@@ -607,11 +679,7 @@ function App() {
       setStreamingProgress(null);
       setAudioSegments([]);
       
-      // Close any active streaming connections
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+
       
       setLastGeneratedUrl('');
     }
@@ -625,7 +693,7 @@ function App() {
     (tab === 'podcast' && podcastGenerated) || 
     (tab === 'talk' && voiceMode); // talk doesn't have generated content yet
 
-  // Scroll tracking for threads fade effect
+  // Scroll tracking for threads fade effect and animated beam
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
@@ -747,6 +815,9 @@ function App() {
           )}
         </div>
       </div>
+
+
+
       {/* Main Content - Increased gap */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-32 z-10">
         {tab === 'diagram' && (
@@ -903,20 +974,29 @@ function App() {
         
         {tab === 'podcast' && (podcastGenerated && !loading) && (
           <div className="w-full flex flex-col items-center mt-12" ref={podcastCardRef}>
-            <PodcastPlayer
-              src={generatedPodcast ? PodcastAPIService.getPodcastAudioUrl(generatedPodcast.cache_key) : "/podcast.mp3"}
-              artwork="/Pranav.jpeg"
-              title={generatedPodcast ? `${generatedPodcast.metadata.repo_name} Podcast` : "Sample Podcast Episode"}
-              artist="GitBridge AI"
-              captionsOn={captionsOn}
-              onCaptionsToggle={setCaptionsOn}
-              speed={speed}
-              onSpeedChange={setSpeed}
-              currentTime={currentTime}
-              onTimeUpdate={setCurrentTime}
-              onDurationChange={setDuration}
-              cacheKey={generatedPodcast?.cache_key}
-            />
+                         <PodcastPlayer
+               src={(() => {
+                 if (generatedPodcast && generatedPodcast.cache_key) {
+                   const audioUrl = PodcastAPIService.getPodcastAudioUrl(generatedPodcast.cache_key);
+                   console.log('Using generated podcast audio URL:', audioUrl);
+                   return audioUrl;
+                 } else {
+                   console.warn('No generated podcast or cache_key available, using sample audio');
+                   return "/podcast.mp3";
+                 }
+               })()}
+               artwork="/Pranav.jpeg"
+               title={generatedPodcast ? `${generatedPodcast.metadata.repo_name} Podcast` : "Sample Podcast Episode"}
+               artist="GitBridge AI"
+               captionsOn={captionsOn}
+               onCaptionsToggle={setCaptionsOn}
+               speed={speed}
+               onSpeedChange={setSpeed}
+               currentTime={currentTime}
+               onTimeUpdate={setCurrentTime}
+               onDurationChange={setDuration}
+               cacheKey={generatedPodcast?.cache_key}
+             />
             
             {/* CaptionsDisplay closer to the card */}
             <div className="w-full flex flex-col items-center mt-6 px-4">
@@ -1012,7 +1092,7 @@ function App() {
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              {podcast.duration} min
+                              {formatDuration(podcast.duration)}
                             </span>
                             <span className="text-xs text-blue-100/80 font-medium">
                               {new Date(podcast.last_accessed).toLocaleDateString()}
