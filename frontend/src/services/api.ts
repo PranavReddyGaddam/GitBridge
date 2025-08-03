@@ -1,5 +1,8 @@
 // API service for GitBridge backend
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://52.205.141.121:8000';
+
+// Debug: Log the API base URL
+console.log('API_BASE_URL:', API_BASE_URL);
 
 // Types for API requests and responses
 export interface GeneratePodcastRequest {

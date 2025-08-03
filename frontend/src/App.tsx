@@ -248,12 +248,12 @@ function App() {
 
 
 
-     // Parse captions when duration is set
-   useEffect(() => {
-     if (duration > 0) {
-       setCaptions(parseCaptions(captionsRaw, duration));
-     }
-   }, [duration]);
+  // Parse captions when duration is set
+  useEffect(() => {
+    if (duration > 0) {
+      setCaptions(parseCaptions(captionsRaw, duration));
+    }
+  }, [duration]);
 
    // Debug generatedPodcast state changes
    useEffect(() => {
@@ -324,7 +324,7 @@ function App() {
   }, []);
 
   // Get API base URL from environment variable or default to localhost
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 
 
@@ -337,7 +337,7 @@ function App() {
       
       try {
         // Analyze repository during loading
-        const analysisResponse = await fetch('http://localhost:8000/api/voice/analyze-repo', {
+        const analysisResponse = await fetch(`${API_BASE_URL}/api/voice/analyze-repo`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -605,19 +605,19 @@ function App() {
     // setPodcastGenerated(false);
   };
 
-     // Load cached podcasts
+  // Load cached podcasts
    const loadCachedPodcasts = useCallback(async () => {
-     if (loadingCachedPodcasts) return;
-     
-     setLoadingCachedPodcasts(true);
-     try {
-       const cached = await PodcastAPIService.getCachedPodcasts(20);
-       setCachedPodcasts(cached);
-     } catch (error) {
-       console.error('Failed to load cached podcasts:', error);
-     } finally {
-       setLoadingCachedPodcasts(false);
-     }
+    if (loadingCachedPodcasts) return;
+    
+    setLoadingCachedPodcasts(true);
+    try {
+      const cached = await PodcastAPIService.getCachedPodcasts(20);
+      setCachedPodcasts(cached);
+    } catch (error) {
+      console.error('Failed to load cached podcasts:', error);
+    } finally {
+      setLoadingCachedPodcasts(false);
+    }
    }, [loadingCachedPodcasts]);
 
   // Load a cached podcast
@@ -974,7 +974,7 @@ function App() {
         
         {tab === 'podcast' && (podcastGenerated && !loading) && (
           <div className="w-full flex flex-col items-center mt-12" ref={podcastCardRef}>
-                         <PodcastPlayer
+            <PodcastPlayer
                src={(() => {
                  if (generatedPodcast && generatedPodcast.cache_key) {
                    const audioUrl = PodcastAPIService.getPodcastAudioUrl(generatedPodcast.cache_key);
@@ -985,18 +985,18 @@ function App() {
                    return "/podcast.mp3";
                  }
                })()}
-               artwork="/Pranav.jpeg"
-               title={generatedPodcast ? `${generatedPodcast.metadata.repo_name} Podcast` : "Sample Podcast Episode"}
-               artist="GitBridge AI"
-               captionsOn={captionsOn}
-               onCaptionsToggle={setCaptionsOn}
-               speed={speed}
-               onSpeedChange={setSpeed}
-               currentTime={currentTime}
-               onTimeUpdate={setCurrentTime}
-               onDurationChange={setDuration}
-               cacheKey={generatedPodcast?.cache_key}
-             />
+              artwork="/Pranav.jpeg"
+              title={generatedPodcast ? `${generatedPodcast.metadata.repo_name} Podcast` : "Sample Podcast Episode"}
+              artist="GitBridge AI"
+              captionsOn={captionsOn}
+              onCaptionsToggle={setCaptionsOn}
+              speed={speed}
+              onSpeedChange={setSpeed}
+              currentTime={currentTime}
+              onTimeUpdate={setCurrentTime}
+              onDurationChange={setDuration}
+              cacheKey={generatedPodcast?.cache_key}
+            />
             
             {/* CaptionsDisplay closer to the card */}
             <div className="w-full flex flex-col items-center mt-6 px-4">
