@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Navbar from './components/Navbar'
 import PodcastPlayer from './components/PodcastPlayer'
 import Threads from './components/threads'
@@ -324,7 +324,10 @@ function App() {
   }, []);
 
   // Get API base URL from environment variable or default to localhost
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const API_BASE_URL = useMemo(() => 
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000', 
+    []
+  );
 
 
 

@@ -17,7 +17,7 @@ interface TalkTabProps {
 }
 
 interface VoiceBubbleProps {
-  state: "idle" | "listening" | "speaking";
+  state: "idle" | "listening" | "speaking" | "processing";
   onTap?: () => void;
   onStartConversation?: () => void;
   showInterruptPrompt?: boolean;
@@ -126,6 +126,8 @@ function VoiceBubble({
         return listeningGradient;
       case "speaking":
         return "linear-gradient(135deg, rgba(16, 185, 129, 0.8) 0%, rgba(5, 150, 105, 0.7) 50%, rgba(4, 120, 87, 0.6) 100%)";
+      case "processing":
+        return "linear-gradient(135deg, rgba(245, 158, 11, 0.8) 0%, rgba(217, 119, 6, 0.7) 50%, rgba(180, 83, 9, 0.6) 100%)";
       default:
         return listeningGradient;
     }
@@ -139,6 +141,8 @@ function VoiceBubble({
         return "rgba(59, 130, 246, 0.8)";
       case "speaking":
         return "rgba(16, 185, 129, 0.8)";
+      case "processing":
+        return "rgba(245, 158, 11, 0.8)";
       default:
         return "rgba(59, 130, 246, 0.7)";
     }
@@ -152,6 +156,8 @@ function VoiceBubble({
         return "rgba(59, 130, 246, 0.6)";
       case "speaking":
         return "rgba(16, 185, 129, 0.6)";
+      case "processing":
+        return "rgba(245, 158, 11, 0.6)";
       default:
         return "rgba(59, 130, 246, 0.5)";
     }
@@ -171,6 +177,8 @@ function VoiceBubble({
         return "breathe 6s ease-in-out infinite";
       case "speaking":
         return "speakingPulse 2s ease-in-out infinite";
+      case "processing":
+        return "processingSpin 2s linear infinite";
       default:
         return "none";
     }
@@ -222,7 +230,14 @@ function VoiceBubble({
             }
           }
           
-
+          @keyframes processingSpin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
           
           @keyframes speakingWave {
             0%, 100% {
@@ -628,9 +643,8 @@ function InstructionsPanel({ isOpen, onClose }: InstructionsPanelProps) {
 }
 
 export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
-  const [state, setState] = useState<"idle" | "listening" | "speaking">("idle");
+  const [state, setState] = useState<"idle" | "listening" | "speaking" | "processing">("idle");
   const [showInstructions, setShowInstructions] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(
     null
   );
@@ -642,7 +656,14 @@ export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
   const voiceBubbleRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  
+  // VAD refs for continuous streaming
+  const vadIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const vadChunksRef = useRef<Blob[]>([]);
+  const isVADActiveRef = useRef(false);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const speechStartTimeRef = useRef<number | null>(null);
+  const isListeningForWakeRef = useRef(false);
 
   // Auto-scroll to voice bubble when component mounts
   useEffect(() => {
@@ -652,6 +673,23 @@ export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
         block: "center",
       });
     }
+  }, []);
+
+  // Cleanup VAD resources on unmount
+  useEffect(() => {
+    return () => {
+      if (vadIntervalRef.current) {
+        clearInterval(vadIntervalRef.current);
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      // Stop wake listening
+      isListeningForWakeRef.current = false;
+    };
   }, []);
 
   // Auto-play introduction when component mounts and analysis is available
@@ -688,6 +726,8 @@ export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
             setState("idle");
             URL.revokeObjectURL(audioUrl);
             setCurrentAudio(null);
+            // Start listening for wake speech after introduction
+            startWakeListening();
           };
 
           audio.onerror = () => {
@@ -695,6 +735,8 @@ export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
             setState("idle");
             URL.revokeObjectURL(audioUrl);
             setCurrentAudio(null);
+            // Start listening for wake speech after introduction
+            startWakeListening();
           };
 
           console.log("Starting introduction audio playback...");
@@ -702,7 +744,12 @@ export default function TalkTab({ repoUrl, repoAnalysis }: TalkTabProps) {
         } catch (error) {
           console.error("Introduction playback error:", error);
           setState("idle");
+          // Start listening for wake speech after introduction
+          startWakeListening();
         }
+      } else if (repoAnalysis && introductionPlayed) {
+        // If introduction already played, start wake listening immediately
+        startWakeListening();
       }
     };
 
@@ -743,26 +790,12 @@ Keep your responses conversational and helpful, as if you're pair programming wi
     };
   }, [currentAudio]);
 
-  const stopRecording = () => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsRecording(false);
-  };
-
-  const startRecording = async () => {
+  // Wake listening for auto-start VAD
+  const startWakeListening = async () => {
     try {
-      setState("listening");
-      setIsRecording(true);
-      chunksRef.current = [];
-
+      console.log("Starting wake listening...");
+      isListeningForWakeRef.current = true;
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -781,37 +814,92 @@ Keep your responses conversational and helpful, as if you're pair programming wi
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+          vadChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        const recordedBlob = new Blob(chunksRef.current, {
-          type: "audio/webm",
-        });
-        
-        console.log("Recording stopped, chunks:", chunksRef.current.length);
-        console.log("Total audio size:", recordedBlob.size, "bytes");
-        
-        // Only process if we have meaningful audio
-        if (recordedBlob.size > 1000 && chunksRef.current.length > 0) {
-          await processVoiceInput(recordedBlob);
-        } else {
-          console.warn("Recording too short or empty, skipping processing");
-          setState("idle");
-        }
-      };
+      // Start recording in small chunks for wake detection
+      mediaRecorder.start(500); // 500ms chunks
 
-      mediaRecorder.start(100); // Collect data every 100ms
+      // Set up wake detection interval
+      vadIntervalRef.current = setInterval(async () => {
+        if (vadChunksRef.current.length > 0 && isListeningForWakeRef.current) {
+          await detectWakeSpeech();
+        }
+      }, 1000); // Process every second
+
     } catch (error) {
-      console.error("Error starting recording:", error);
-      setState("idle");
-      setTimeout(() => setState("idle"), 2000);
+      console.error("Error starting wake listening:", error);
+      isListeningForWakeRef.current = false;
+    }
+  };
+
+  const detectWakeSpeech = async () => {
+    try {
+      if (vadChunksRef.current.length === 0) return;
+
+      // Create audio blob from accumulated chunks
+      const audioBlob = new Blob(vadChunksRef.current, { type: "audio/webm" });
+      
+      // Send to VAD endpoint
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "wake_chunk.webm");
+
+      const vadResponse = await fetch(`${API_BASE_URL}/api/voice/vad`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!vadResponse.ok) {
+        console.error("Wake VAD request failed:", vadResponse.status);
+        return;
+      }
+
+      const vadResult = await vadResponse.json();
+      console.log("Wake VAD result:", vadResult);
+
+      // If speech detected, start full VAD streaming
+      if (vadResult.has_speech && vadResult.speech_ratio > 0.2) {
+        console.log("Wake speech detected - starting full VAD streaming");
+        isListeningForWakeRef.current = false;
+        
+        // Stop wake listening
+        if (vadIntervalRef.current) {
+          clearInterval(vadIntervalRef.current);
+          vadIntervalRef.current = null;
+        }
+        
+        // Start full VAD streaming
+        await startVADStreaming();
+      }
+
+      // Clear processed chunks
+      vadChunksRef.current = [];
+
+    } catch (error) {
+      console.error("Wake speech detection error:", error);
+    }
+  };
+
+  // Legacy recording functions - kept for compatibility but not used with VAD
+  const stopRecording = () => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
   };
 
   const processVoiceInput = async (recordedAudio: Blob) => {
     try {
+      // Set processing state
+      setState("processing");
+      
       // Validate audio blob
       console.log("Audio blob size:", recordedAudio.size, "bytes");
       console.log("Audio blob type:", recordedAudio.type);
@@ -904,18 +992,21 @@ Keep your responses conversational and helpful, as if you're pair programming wi
       setCurrentAudio(audio);
 
       audio.onended = () => {
+        console.log("AI response finished");
         setState("idle");
-        setTimeout(() => setState("idle"), 1500);
         URL.revokeObjectURL(audioUrl);
         setCurrentAudio(null);
+        // Restart wake listening for next conversation turn
+        startWakeListening();
       };
 
       audio.onerror = () => {
         console.error("Error playing audio");
         setState("idle");
-        setTimeout(() => setState("idle"), 2000);
         URL.revokeObjectURL(audioUrl);
         setCurrentAudio(null);
+        // Restart wake listening after error
+        startWakeListening();
       };
 
       await audio.play();
@@ -926,22 +1017,183 @@ Keep your responses conversational and helpful, as if you're pair programming wi
     }
   };
 
+  // VAD Functions for continuous streaming
+  const startVADStreaming = async () => {
+    try {
+      console.log("Starting VAD streaming...");
+      setState("listening");
+      isVADActiveRef.current = true;
+      vadChunksRef.current = [];
+
+      // If AI is currently speaking, interrupt it
+      if (currentAudio && state === "speaking") {
+        console.log("Interrupting AI response for new input");
+        currentAudio.pause();
+        setCurrentAudio(null);
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+        },
+      });
+
+      streamRef.current = stream;
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm;codecs=opus",
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          vadChunksRef.current.push(event.data);
+        }
+      };
+
+      // Start recording in small chunks for VAD processing
+      mediaRecorder.start(500); // 500ms chunks
+
+      // Set up VAD processing interval
+      vadIntervalRef.current = setInterval(async () => {
+        if (vadChunksRef.current.length > 0 && isVADActiveRef.current) {
+          await processVADChunk();
+        }
+      }, 1000); // Process every second
+
+    } catch (error) {
+      console.error("Error starting VAD streaming:", error);
+      setState("idle");
+      isVADActiveRef.current = false;
+    }
+  };
+
+  const stopVADStreaming = () => {
+    console.log("Stopping VAD streaming...");
+    isVADActiveRef.current = false;
+    
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    
+    setState("idle");
+  };
+
+  const processVADChunk = async () => {
+    try {
+      if (vadChunksRef.current.length === 0) return;
+
+      // Create audio blob from accumulated chunks
+      const audioBlob = new Blob(vadChunksRef.current, { type: "audio/webm" });
+      
+      // Send to VAD endpoint
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "vad_chunk.webm");
+
+      const vadResponse = await fetch(`${API_BASE_URL}/api/voice/vad`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!vadResponse.ok) {
+        console.error("VAD request failed:", vadResponse.status);
+        return;
+      }
+
+      const vadResult = await vadResponse.json();
+      console.log("VAD result:", vadResult);
+
+      // Handle speech detection
+      if (vadResult.has_speech && vadResult.speech_ratio > 0.3) {
+        // Speech detected - start recording
+        if (!speechStartTimeRef.current) {
+          speechStartTimeRef.current = Date.now();
+          console.log("Speech detected - starting recording");
+          setState("listening");
+          
+          // Clear any existing silence timeout
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+        }
+      } else {
+        // No speech detected
+        if (speechStartTimeRef.current) {
+          // Check if we've been silent for long enough
+          const speechDuration = Date.now() - speechStartTimeRef.current;
+          if (speechDuration > 2000) { // At least 2 seconds of speech
+            console.log("Speech ended - processing recording");
+            speechStartTimeRef.current = null;
+            
+            // Process the recorded audio
+            const recordedAudio = new Blob(vadChunksRef.current, { type: "audio/webm" });
+            await processVoiceInput(recordedAudio);
+            
+            // Clear chunks for next recording
+            vadChunksRef.current = [];
+          } else {
+            // Set timeout for silence detection
+            if (silenceTimeoutRef.current) {
+              clearTimeout(silenceTimeoutRef.current);
+            }
+            silenceTimeoutRef.current = setTimeout(() => {
+              if (speechStartTimeRef.current) {
+                console.log("Silence timeout - processing recording");
+                speechStartTimeRef.current = null;
+                
+                const recordedAudio = new Blob(vadChunksRef.current, { type: "audio/webm" });
+                processVoiceInput(recordedAudio);
+                vadChunksRef.current = [];
+              }
+            }, 1500); // 1.5 seconds of silence
+          }
+        }
+      }
+
+      // Clear processed chunks
+      vadChunksRef.current = [];
+
+    } catch (error) {
+      console.error("VAD processing error:", error);
+    }
+  };
+
   const handleStartConversation = async () => {
-    await startRecording();
+    await startVADStreaming();
   };
 
   const handleVoiceBubbleTap = () => {
-    if (state === "listening" && isRecording) {
-      // Stop recording and process
-      stopRecording();
+    if (state === "listening" && isVADActiveRef.current) {
+      // Stop VAD streaming and return to wake listening
+      stopVADStreaming();
+      startWakeListening();
     } else if (state === "speaking" && currentAudio && introductionPlayed) {
-      // Only allow interruption after introduction has played
+      // Interrupt AI response and start listening
       currentAudio.pause();
       setCurrentAudio(null);
-      startRecording();
+      startVADStreaming();
     } else if (state === "idle") {
-      // Retry after error
-      setState("idle");
+      // Manual start - begin VAD streaming
+      startVADStreaming();
     }
     // During introduction (speaking but !introductionPlayed), do nothing - let it finish
   };

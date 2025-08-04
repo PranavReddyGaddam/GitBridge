@@ -1,10 +1,10 @@
 // components/MermaidDiagram.tsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import mermaid from "mermaid";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -98,8 +98,8 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
   const handleWheel = useCallback(
     (e: WheelEvent) => {
       if (!isZoomEnabled || isTransitioning) return;
-
-      e.preventDefault();
+    
+    e.preventDefault();
 
       const mousePos = getMousePosition(e);
       const currentZoom = zoomState.level;
@@ -146,9 +146,9 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
   const handleClick = useCallback(
     (e: MouseEvent) => {
       if (!isZoomEnabled || isTransitioning) return;
-
-      e.preventDefault();
-
+    
+    e.preventDefault();
+    
       const mousePos = getMousePosition(e);
       const currentZoom = zoomState.level;
 
@@ -276,7 +276,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
   }, [applyZoom]);
 
   useEffect(() => {
-    mermaid.initialize({
+    mermaid.initialize({ 
       startOnLoad: false,
       theme: "default",
       themeVariables: {
@@ -339,7 +339,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
   // Handle zoom event listeners
   useEffect(() => {
     const svgEl = svgRef.current;
-
+    
     if (svgEl) {
       if (isZoomEnabled) {
         svgEl.style.cursor = "zoom-in";
@@ -393,20 +393,20 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
     try {
       // Clone the SVG to avoid modifying the original
       const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
-
+      
       // Reset any transforms for export
       clonedSvg.style.transform = "none";
-
+      
       // Get SVG dimensions
       const bbox = clonedSvg.getBBox();
       const width = bbox.width || 800;
       const height = bbox.height || 600;
-
+      
       // Set explicit dimensions and ensure proper SVG structure
       clonedSvg.setAttribute("width", width.toString());
       clonedSvg.setAttribute("height", height.toString());
       clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-
+      
       // Embed all styles inline to avoid external dependencies
       const styleElements = clonedSvg.querySelectorAll("style");
       styleElements.forEach((style) => {
@@ -417,18 +417,18 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
               cssText += style.sheet.cssRules[i].cssText + "\n";
             }
             style.textContent = cssText;
-          } catch {
-            // If we can't access cssRules, keep the existing content
-          }
+                     } catch {
+             // If we can't access cssRules, keep the existing content
+           }
         }
       });
-
+      
       // Use data URL instead of blob to avoid CORS issues
       const svgData = new XMLSerializer().serializeToString(clonedSvg);
       const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
         svgData
       )}`;
-
+      
       // Create canvas
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d", { willReadFrequently: false });
@@ -441,23 +441,23 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
       const scale = 2;
       canvas.width = width * scale;
       canvas.height = height * scale;
-
+      
       // Create image from data URL (no CORS issues)
       const img = new Image();
-
+      
       await new Promise((resolve, reject) => {
         img.onload = () => {
           try {
             // Fill white background
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+            
             // Scale context for high-res
             ctx.scale(scale, scale);
-
+            
             // Draw the SVG
             ctx.drawImage(img, 0, 0, width, height);
-
+            
             // Convert to PNG and download
             canvas.toBlob((blob) => {
               if (blob) {
@@ -478,38 +478,38 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
                     console.log("Could not parse repo name from URL:", error);
                   }
                 }
-
+                
                 const link = document.createElement("a");
                 link.download = `${filename}-diagram-${Date.now()}.png`;
                 link.href = URL.createObjectURL(blob);
                 link.style.display = "none";
-
+                
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-
+                
                 // Clean up the blob URL
                 setTimeout(() => {
                   URL.revokeObjectURL(link.href);
                 }, 100);
-
+                
                 console.log("PNG download successful");
               } else {
                 console.error("Failed to create PNG blob");
               }
             }, "image/png");
-
+            
             resolve(true);
           } catch (error) {
             reject(error);
           }
         };
-
+        
         img.onerror = (error) => {
           console.error("Image loading failed:", error);
           reject(error);
         };
-
+        
         // Use data URL instead of blob URL to avoid CORS
         img.src = dataUrl;
       });
@@ -523,10 +523,10 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
     try {
       await navigator.clipboard.writeText(codeToUse);
       console.log("Mermaid code copied to clipboard");
-
+      
       // Show notification
       setShowCopyNotification(true);
-
+      
       // Hide notification after 2 seconds
       setTimeout(() => {
         setShowCopyNotification(false);
@@ -600,7 +600,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
           borderRadius: 16,
         }}
       />
-
+      
       {/* Control Panel - Top Right */}
       <div className="absolute top-4 right-4 flex items-center gap-3">
         {/* Zoom Controls */}
@@ -608,7 +608,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
           <button
             onClick={toggleZoom}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 shadow-md border ${
-              isZoomEnabled
+              isZoomEnabled 
                 ? "bg-green-100 text-green-700 border-green-300 hover:bg-green-200"
                 : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
             }`}
@@ -618,12 +618,12 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
               {isZoomEnabled ? "Zoom: ON" : "Zoom: OFF"}
             </span>
           </button>
-
+          
           {isZoomEnabled && (
             <>
-              <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border shadow-sm">
+            <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border shadow-sm">
                 {(zoomState.level * 100).toFixed(0)}%
-              </div>
+            </div>
 
               <button
                 onClick={resetZoom}
@@ -644,7 +644,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
             </>
           )}
         </div>
-
+        
         {/* Export Button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -672,7 +672,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
+      
       {/* Copy Notification */}
       {showCopyNotification && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-indigo-500 bg-opacity-90 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-300 z-50">

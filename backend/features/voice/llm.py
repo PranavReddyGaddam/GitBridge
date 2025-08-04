@@ -104,18 +104,18 @@ class LLMService:
                 else:
                     # Handle non-streaming response
                     req = client.post(self.api_url, headers=headers, json=payload)
-                    if abort_event:
-                        done, pending = await asyncio.wait([req, abort_event.wait()], return_when=asyncio.FIRST_COMPLETED)
-                        if abort_event.is_set():
-                            logger.warning("LLM request aborted by user.")
-                            return "[Interrupted]"
-                        response = done.pop().result()
-                    else:
-                        response = await req
-                    response.raise_for_status()
-                    data = response.json()
-                    # Extract response text (update as per OpenRouter API)
-                    return data["choices"][0]["message"]["content"]
+                if abort_event:
+                    done, pending = await asyncio.wait([req, abort_event.wait()], return_when=asyncio.FIRST_COMPLETED)
+                    if abort_event.is_set():
+                        logger.warning("LLM request aborted by user.")
+                        return "[Interrupted]"
+                    response = done.pop().result()
+                else:
+                    response = await req
+                response.raise_for_status()
+                data = response.json()
+                # Extract response text (update as per OpenRouter API)
+                return data["choices"][0]["message"]["content"]
         except Exception as e:
             logger.error(f"LLM request failed: {e}")
             return "[Error: LLM unavailable]" 

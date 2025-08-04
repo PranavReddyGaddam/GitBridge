@@ -4,6 +4,7 @@ from .stt import SpeechToTextService
 from .llm import LLMService
 from .tts import TTSService
 from .state import VoiceSessionManager
+from .vad import VoiceActivityDetector
 import sys
 from pathlib import Path
 
@@ -31,6 +32,7 @@ stt_service = SpeechToTextService()
 llm_service = LLMService()
 tts_service = TTSService()
 session_manager = VoiceSessionManager()
+vad_service = VoiceActivityDetector()
 github_service = GitHubService()
 podcast_llm_service = PodcastLLMService()
 
@@ -283,6 +285,164 @@ def voices_endpoint(language_code: str = Query("en-US")):
     except Exception as e:
         logger.error(f"Voices error: {e}")
         raise HTTPException(status_code=500, detail="Failed to list voices")
+
+@router.post('/vad')
+async def vad_endpoint(request: Request, audio: UploadFile = File(...)):
+    """
+    Voice Activity Detection endpoint for real-time speech detection.
+    Returns VAD results for audio chunks.
+    """
+    try:
+        audio_bytes = await audio.read()
+        logger.info(f"VAD request: {audio.filename}, size: {len(audio_bytes)} bytes")
+        
+        # Create temporary file for audio processing
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+            tmp_file.write(audio_bytes)
+            tmp_file.flush()
+            tmp_file_path = tmp_file.name
+        
+        try:
+            # Import required modules
+            import numpy as np
+            from pydub import AudioSegment
+            
+            # Convert audio to proper format for VAD
+            try:
+                # Try auto-detect first (most reliable)
+                audio_segment = AudioSegment.from_file(tmp_file_path)
+                audio_segment = audio_segment.set_channels(1).set_frame_rate(16000)
+                audio_segment.export(tmp_file_path, format="wav")
+                logger.info(f"Successfully converted audio using auto-detect")
+            except Exception as auto_error:
+                logger.warning(f"Auto-detect failed: {auto_error}")
+                
+                # Try specific format if content type is provided
+                if audio.content_type and 'webm' in audio.content_type:
+                    try:
+                        audio_segment = AudioSegment.from_file(tmp_file_path, format='webm')
+                        audio_segment = audio_segment.set_channels(1).set_frame_rate(16000)
+                        audio_segment.export(tmp_file_path, format="wav")
+                        logger.info(f"Successfully converted WebM audio")
+                    except Exception as webm_error:
+                        logger.error(f"WebM conversion also failed: {webm_error}")
+                        raise HTTPException(status_code=400, detail=f"Audio format not supported: {str(webm_error)}")
+                else:
+                    raise HTTPException(status_code=400, detail=f"Audio format not supported: {str(auto_error)}")
+            
+            # Load audio as numpy array for VAD
+            audio_segment = AudioSegment.from_wav(tmp_file_path)
+            audio_array = np.array(audio_segment.get_array_of_samples(), dtype=np.float32)
+            
+            # Normalize audio
+            if audio_array.max() > 1.0:
+                audio_array = audio_array / 32768.0
+            
+            # Run VAD detection
+            speech_segments = vad_service.detect_segments(audio_array)
+            
+            # Determine if current audio contains speech
+            has_speech = len(speech_segments) > 0
+            
+            # Calculate speech duration and confidence
+            total_speech_duration = sum([(seg['end'] - seg['start']) / 16000 for seg in speech_segments])
+            audio_duration = len(audio_array) / 16000
+            speech_ratio = total_speech_duration / audio_duration if audio_duration > 0 else 0
+            
+            result = {
+                "has_speech": has_speech,
+                "speech_segments": speech_segments,
+                "speech_ratio": speech_ratio,
+                "total_speech_duration": total_speech_duration,
+                "audio_duration": audio_duration,
+                "confidence": speech_ratio if has_speech else 0.0
+            }
+            
+            logger.info(f"VAD result: has_speech={has_speech}, speech_ratio={speech_ratio:.2f}")
+            return result
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(tmp_file_path):
+                os.remove(tmp_file_path)
+                
+    except Exception as e:
+        logger.error(f"VAD error: {e}")
+        raise HTTPException(status_code=500, detail=f"VAD failed: {str(e)}")
+
+@router.post('/vad-stream')
+async def vad_stream_endpoint(request: Request, audio: UploadFile = File(...)):
+    """
+    Streaming VAD endpoint for real-time voice activity detection.
+    Processes audio chunks and returns immediate VAD results.
+    """
+    try:
+        audio_bytes = await audio.read()
+        logger.info(f"VAD stream request: {audio.filename}, size: {len(audio_bytes)} bytes")
+        
+        # Create temporary file for audio processing
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
+            tmp_file.write(audio_bytes)
+            tmp_file.flush()
+            tmp_file_path = tmp_file.name
+        
+        try:
+            # Import required modules
+            import numpy as np
+            from pydub import AudioSegment
+            
+            # Convert audio to proper format
+            try:
+                # Try auto-detect first (most reliable)
+                audio_segment = AudioSegment.from_file(tmp_file_path)
+                audio_segment = audio_segment.set_channels(1).set_frame_rate(16000)
+                audio_segment.export(tmp_file_path, format="wav")
+                logger.info(f"Successfully converted audio using auto-detect")
+            except Exception as auto_error:
+                logger.warning(f"Auto-detect failed: {auto_error}")
+                
+                # Try specific format if content type is provided
+                if audio.content_type and 'webm' in audio.content_type:
+                    try:
+                        audio_segment = AudioSegment.from_file(tmp_file_path, format='webm')
+                        audio_segment = audio_segment.set_channels(1).set_frame_rate(16000)
+                        audio_segment.export(tmp_file_path, format="wav")
+                        logger.info(f"Successfully converted WebM audio")
+                    except Exception as webm_error:
+                        logger.error(f"WebM conversion also failed: {webm_error}")
+                        raise HTTPException(status_code=400, detail=f"Audio format not supported: {str(webm_error)}")
+                else:
+                    raise HTTPException(status_code=400, detail=f"Audio format not supported: {str(auto_error)}")
+            
+            # Load audio as numpy array
+            audio_segment = AudioSegment.from_wav(tmp_file_path)
+            audio_array = np.array(audio_segment.get_array_of_samples(), dtype=np.float32)
+            
+            # Normalize audio
+            if audio_array.max() > 1.0:
+                audio_array = audio_array / 32768.0
+            
+            # Process with streaming VAD
+            vad_result = vad_service.stream_step(audio_array)
+            
+            result = {
+                "is_speech": vad_result.get('is_speech', False),
+                "confidence": vad_result.get('confidence', 0.0),
+                "event": vad_result.get('event', None),
+                "has_segments": len(vad_result.get('segments', [])) > 0
+            }
+            
+            logger.debug(f"VAD stream result: {result}")
+            return result
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(tmp_file_path):
+                os.remove(tmp_file_path)
+                
+    except Exception as e:
+        logger.error(f"VAD stream error: {e}")
+        raise HTTPException(status_code=500, detail=f"VAD stream failed: {str(e)}")
 
 @router.post('/analyze-repo')
 async def analyze_repo_for_voice(request: Request, body: dict):
