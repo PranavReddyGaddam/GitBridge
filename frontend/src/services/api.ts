@@ -1,5 +1,6 @@
 // API service for GitBridge backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Empty string uses relative URLs (proxied through Vercel to backend)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // Debug: Log the API base URL
 console.log('API_BASE_URL:', API_BASE_URL);
